@@ -1,0 +1,3 @@
+[submodule "TrueEngine"]
+	path = TrueEngine
+	url = git@github.com:TrueMoonn/TrueEngine.git
