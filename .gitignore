@@ -1,0 +1,9 @@
+# Local Files
+build/
+r-type_*
+*.a
+*.so
+doxygen/
+
+# Editor config
+.vscode
