@@ -41,6 +41,7 @@ target_include_directories(${PROJECT_NAME}_server
 target_link_libraries(${PROJECT_NAME}_server
     PRIVATE
         TrueEngine
+        physic
 )
 
 # CLIENT
@@ -58,6 +59,7 @@ target_include_directories(${PROJECT_NAME}_client
 target_link_libraries(${PROJECT_NAME}_client
     PRIVATE
         TrueEngine
+        physic
 )
 
 ########## TESTS ##########

@@ -25,6 +25,7 @@ class RtypeClient {
 
  private:
     te::network::GameClient _client;
+    ECS::Registry& _ecs;
 
     void registerProtocolHandlers();
 
@@ -36,6 +37,8 @@ class RtypeClient {
     void handleServerFull(const std::vector<uint8_t>& data);
     void handlePing(const std::vector<uint8_t>& data);
     void handlePong(const std::vector<uint8_t>& data);
+    void handleEntityState(const std::vector<uint8_t>& data);
 
     void append(std::vector<uint8_t>& vec, uint32_t value) const;
+    uint32_t extractUint32(const std::vector<uint8_t>& data, size_t offset) const;
 };

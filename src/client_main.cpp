@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
         std::cout << "[Client] Press Ctrl+C to disconnect" << std::endl;
 
         // Main client loop
-        const float deltaTime = 1.0f / 60.0f;  // 60 FPS
+        const float deltaTime = 1.0f / 60.0f;  // 60 FPS  (actuellement ca sert à rien mdr)
         auto lastUpdate = std::chrono::steady_clock::now();
         auto lastPing = std::chrono::steady_clock::now();
 
@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
                 lastPing = now;
             }
 
-            // Sleep a bit to avoid busy-waiting
+            // Sleep a bit bro
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
 

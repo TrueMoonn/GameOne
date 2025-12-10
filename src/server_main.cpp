@@ -69,7 +69,7 @@ int main(int argc, char** argv) {
                 lastUpdate = now;
             }
 
-            // Sleep a bit to avoid busy-waiting
+            // Sleep a bit bro
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
 
