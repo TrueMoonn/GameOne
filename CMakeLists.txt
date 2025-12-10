@@ -28,7 +28,8 @@ add_subdirectory(TrueEngine)
 
 # SERVER
 add_executable( ${PROJECT_NAME}_server
-    ${RT_SRC_DIR}/temp.cpp
+    ${RT_SRC_DIR}/server_main.cpp
+    ${RT_SRC_DIR}/RtypeServer.cpp
 )
 
 target_include_directories(${PROJECT_NAME}_server
@@ -37,15 +38,26 @@ target_include_directories(${PROJECT_NAME}_server
         ${TE_HDR_DIR}
 )
 
+target_link_libraries(${PROJECT_NAME}_server
+    PRIVATE
+        TrueEngine
+)
+
 # CLIENT
 add_executable( ${PROJECT_NAME}_client
-    ${RT_SRC_DIR}/temp.cpp
+    ${RT_SRC_DIR}/client_main.cpp
+    ${RT_SRC_DIR}/RtypeClient.cpp
 )
 
 target_include_directories(${PROJECT_NAME}_client
     PUBLIC
         ${RT_HDR_DIR}
         ${TE_HDR_DIR}
+)
+
+target_link_libraries(${PROJECT_NAME}_client
+    PRIVATE
+        TrueEngine
 )
 
 ########## TESTS ##########
