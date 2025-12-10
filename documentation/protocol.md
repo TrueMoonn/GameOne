@@ -61,8 +61,8 @@ Every code (1 ... 255) is on ONE BYTE only
 
 ### 20 ... 29 → accounts codes
 ```
-22  LOGGED IN               [NO DATA]   ->  Respond to 20 if ok
-25  USERNAME ALREADY TAKEN  [NO DATA]   ->  Respond to 20 if username already taken
+22  LOGGED IN               [22 + 4B int id]    ->  Respond to 20 if ok
+25  USERNAME ALREADY TAKEN  [NO DATA]           ->  Respond to 20 if username already taken
 ```
 
 ### 30 ... 49 → lobby codes
