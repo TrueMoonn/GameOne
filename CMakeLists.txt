@@ -29,6 +29,7 @@ add_subdirectory(TrueEngine)
 # SERVER
 add_executable( ${PROJECT_NAME}_server
     ${RT_SRC_DIR}/server_main.cpp
+    ${RT_SRC_DIR}/Game.cpp
     ${RT_SRC_DIR}/RtypeServer.cpp
 )
 
@@ -41,12 +42,12 @@ target_include_directories(${PROJECT_NAME}_server
 target_link_libraries(${PROJECT_NAME}_server
     PRIVATE
         TrueEngine
-        physic
 )
 
 # CLIENT
 add_executable( ${PROJECT_NAME}_client
     ${RT_SRC_DIR}/client_main.cpp
+    ${RT_SRC_DIR}/Game.cpp
     ${RT_SRC_DIR}/RtypeClient.cpp
 )
 
@@ -59,7 +60,6 @@ target_include_directories(${PROJECT_NAME}_client
 target_link_libraries(${PROJECT_NAME}_client
     PRIVATE
         TrueEngine
-        physic
 )
 
 ########## TESTS ##########
