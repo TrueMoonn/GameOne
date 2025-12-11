@@ -6,17 +6,25 @@
 #include <cstring>
 #include <iostream>
 #include <string>
+#include <csignal>
+#include <array>
 #include <vector>
 #include <RtypeClient.hpp>
+#include <GameTool.hpp>
 #include <physic/components/position.hpp>
+#include <event/events.hpp>
 
-RtypeClient::RtypeClient(ECS::Registry& ecs, const std::string& protocol)
-    : _client(ecs, protocol)
-    , _ecs(ecs) {
-    _ecs.registerComponent<addon::physic::Position2>();
+RtypeClient::RtypeClient(const std::string& protocol, uint16_t port, const std::string& server_ip)
+    : _client(protocol), _server_port(port), _server_ip(server_ip) {
 
+    loadPlugins("./plugins_client");  // TODO(Pierre): vérifier que si je le load dans le constructeur de Game ca marche
+    addConfig("./assets/config/player.toml");
+    createEntity(5000, "player", {0, 0});
+    createComponent("window", 0);
     registerProtocolHandlers();
-
+    createSystem("movement2");
+    createSystem("draw");
+    createSystem("display");
     _client.setConnectCallback([this]() {
         std::cout << "[Client] Network connection established, sending CONNECTION_REQUEST..."
                   << std::endl;
@@ -33,6 +41,93 @@ RtypeClient::~RtypeClient() {
     if (_client.isConnected()) {
         disconnect();
     }
+}
+
+void signalHandler(int signal) {
+    if (signal == SIGINT || signal == SIGTERM) {
+        std::cout << "\n[Client] Disconnecting..." << std::endl;
+        return;  // Throw or exit
+    }
+}
+
+void RtypeClient::run() {
+    std::cout << "=== R-Type Client ===" << std::endl;
+    std::cout << "Server: " << _server_ip << ":" << _server_port << std::endl;
+    std::cout << "=====================" << std::endl;
+
+    std::signal(SIGINT, signalHandler);
+    std::signal(SIGTERM, signalHandler);
+
+    try {
+        std::cout << "[Client] Connecting to server..." << std::endl;
+        if (!connect(_server_ip, _server_port)) {
+            std::cerr << "[Client] Failed to connect to server" << std::endl;
+            return;  // (devrait throw peut etre)
+        }
+
+        std::cout << "[Client] Connected! Starting game loop..." << std::endl;
+        std::cout << "[Client] Press Ctrl+C to disconnect" << std::endl;
+
+        const float deltaTime = 1.0f / 60.0f;  // 60 FPS  (actuellement ca sert à rien mdr)
+        auto lastUpdate = std::chrono::steady_clock::now();
+        auto lastPing = std::chrono::steady_clock::now();
+
+        while (!isEvent(te::event::System::Closed) && isConnected()) {
+            auto now = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now - lastUpdate).count();
+
+            if (elapsed >= 16) {  // ~60 FPS
+                update(deltaTime);
+                lastUpdate = now;
+            }
+
+           // Send ping every 5 seconds
+            auto pingElapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                now - lastPing).count();
+            if (pingElapsed >= 5) {
+                std::cout << "[Client] Sending PING..." << std::endl;
+                sendPing();
+                lastPing = now;
+            }
+
+            pollEvent();
+            emit();
+            if (isEvent(te::event::System::KeyPressed)) {
+                sendEvent();
+            }
+            runSystems();
+
+            // Sleep a bit bro
+            // std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+
+        if (isConnected()) {
+            std::cout << "[Client] Disconnecting..." << std::endl;
+            disconnect();
+        }
+        std::cout << "[Client] Goodbye!" << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "[Client] Fatal error: " << e.what() << std::endl;
+        return;  // devrait throw
+    }
+}
+
+void RtypeClient::sendEvent() {
+    if (!isConnected()) {
+        return;
+    }
+
+    std::vector<uint8_t> packet;
+
+    packet.push_back(CLIENT_EVENT);
+    std::vector<uint8_t> temp = net::PacketSerializer::serialize(getEvents());
+    std::copy(temp.begin(), temp.end(), back_inserter(packet));
+    _client.send(packet);
+
+    auto events = getEvents();
+    events.keys.clear();
+    setEvents(events);
 }
 
 bool RtypeClient::connect(const std::string& ip, uint16_t port) {
@@ -95,6 +190,7 @@ void RtypeClient::sendDisconnection() {
 void RtypeClient::sendPing() {
     std::vector<uint8_t> packet;
 
+    _pingTime = std::chrono::steady_clock::now();
     packet.push_back(PING);
     _client.send(packet);
 }
@@ -122,6 +218,11 @@ void RtypeClient::handlePing(const std::vector<uint8_t>& data) {
 
 void RtypeClient::handlePong(const std::vector<uint8_t>& data) {
     std::cout << "[Client] Pong received" << std::endl;
+    auto now = std::chrono::steady_clock::now();
+    auto pingElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now - _pingTime).count();
+    std::cout << "Latency between sendPing and receive Pong (in ms): "
+        << pingElapsed << "\n";
 }
 
 void RtypeClient::append(std::vector<uint8_t>& vec, uint32_t value) const {
@@ -130,7 +231,17 @@ void RtypeClient::append(std::vector<uint8_t>& vec, uint32_t value) const {
     vec.insert(vec.end(), bytes.begin(), bytes.end());
 }
 
-uint32_t RtypeClient::extractUint32(const std::vector<uint8_t>& data, size_t offset) const {
+float RtypeClient::extractFloat(const std::vector<uint8_t>& data,
+    size_t offset) const {
+    if (offset + 4 > data.size())
+        return 0;
+    float value;
+    std::memcpy(&value, data.data() + offset, 4);
+    return value;
+}
+
+uint32_t RtypeClient::extractUint32(const std::vector<uint8_t>& data,
+    size_t offset) const {
     if (offset + 4 > data.size())
         return 0;
     uint32_t value;
@@ -142,7 +253,6 @@ void RtypeClient::handleEntityState(const std::vector<uint8_t>& data) {
     if (data.size() < 4)
         return;
 
-    // Extract entity count
     uint32_t entity_count = extractUint32(data, 0);
 
     size_t expected_size = 4 + (entity_count * 12);
@@ -160,23 +270,32 @@ void RtypeClient::handleEntityState(const std::vector<uint8_t>& data) {
     // Process each entity
     size_t offset = 4;
     for (uint32_t i = 0; i < entity_count; ++i) {
-        uint32_t id = extractUint32(data, offset);
-        uint32_t x = extractUint32(data, offset + 4);
-        uint32_t y = extractUint32(data, offset + 8);
+        uint32_t server_id = extractUint32(data, offset);  // Entity ID is uint32
+        float x = extractFloat(data, offset + 4);  // Position X is float
+        float y = extractFloat(data, offset + 8);  // Position Y is float
         offset += 12;
 
-        auto& positions = _ecs.getComponents<addon::physic::Position2>();
+        auto& positions = getComponent<addon::physic::Position2>();
 
-        if (id >= positions.size() || !positions[id].has_value()) {
-            _ecs.addComponent(id, addon::physic::Position2(
-                static_cast<float>(x), static_cast<float>(y)));
-            std::cout << "[Client] Created entity " << id << " at position ("
+        uint32_t client_id;
+        if (_serverToClientEntityMap.find(server_id) == _serverToClientEntityMap.end()) {
+            client_id = next_entity_id++;
+            createComponent("position2", client_id);
+            _serverToClientEntityMap[server_id] = client_id;
+            std::cout << "[Client] Created entity mapping: server_id=" << server_id
+                      << " -> client_id=" << client_id << " at position ("
                       << x << ", " << y << ")" << std::endl;
         } else {
-            positions[id].value().x = static_cast<float>(x);
-            positions[id].value().y = static_cast<float>(y);
+            client_id = _serverToClientEntityMap[server_id];
+        }
+
+        // Update the entity's position
+        if (client_id < positions.size() && positions[client_id].has_value()) {
+            positions[client_id].value().x = x;
+            positions[client_id].value().y = y;
             if (should_log) {
-                std::cout << "[Client] Updated entity " << id << " to position ("
+                std::cout << "[Client] Updated entity server_id=" << server_id
+                          << " (client_id=" << client_id << ") to position ("
                           << x << ", " << y << ") from server" << std::endl;
             }
         }

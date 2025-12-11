@@ -7,27 +7,30 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <csignal>
+#include <atomic>
 #include <RtypeServer.hpp>
+#include <Network/PacketSerializer.hpp>
 #include <physic/components/position.hpp>
 #include <physic/components/velocity.hpp>
 #include <physic/systems/movement.hpp>
+#include <event/events.hpp>
 
-RtypeServer::RtypeServer(ECS::Registry& ecs, uint16_t port,
+// Global flag for signal handling
+static std::atomic<bool> g_running(true);
+
+RtypeServer::RtypeServer(uint16_t port,
                          const std::string& protocol,
                          size_t max_clients)
-    : _server(ecs, port, protocol)
-    , _ecs(ecs)
+    : _server(port, protocol)
+    , _port(port)
+    , _protocol(protocol)
     , _max_clients(max_clients)
     , _state_broadcast_timer(0.0f) {
-    // Register ECS components from TrueEngine
-    _ecs.registerComponent<addon::physic::Position2>();
-    _ecs.registerComponent<addon::physic::Velocity2>();
-
-    // Register movement system
-    _ecs.addSystem(addon::physic::movement2_sys);
-
     registerProtocolHandlers();
 
+    loadPlugins("./plugins_server");  // TODO(Pierre): vérifier que si je le load dans le constructeur de Game ca marche
+    createSystem("movement2");
     _server.setClientConnectCallback([this](const net::Address& client) {
         std::cout << "[Server] Network connection from: "
                   << client.getIP() << ":" << client.getPort() << std::endl;
@@ -48,6 +51,61 @@ RtypeServer::~RtypeServer() {
     stop();
 }
 
+void signalHandler(int signal) {
+    if (signal == SIGINT || signal == SIGTERM) {
+        std::cout << "\n[Server] Shutting down gracefully..." << std::endl;
+        g_running = false;
+    }
+}
+
+void RtypeServer::run() {
+    std::cout << "=== R-Type Server ===" << std::endl;
+    std::cout << "Port: " << _port << std::endl;
+    std::cout << "Protocol: " << _protocol << std::endl;
+    std::cout << "Max clients: " << _max_clients << std::endl;
+    std::cout << "=====================" << std::endl;
+
+    std::signal(SIGINT, signalHandler);
+    std::signal(SIGTERM, signalHandler);
+
+    try {
+        if (!start()) {
+            std::cerr << "[Server] Failed to start server on port " << _port << std::endl;
+            return;  // should throw
+        }
+
+        std::cout << "[Server] Server started successfully!" << std::endl;
+        std::cout << "[Server] Press Ctrl+C to stop" << std::endl;
+
+        // Main server loop
+        const float deltaTime = 1.0f / 60.0f;  // 60 FPS  (actuellement ca sert à rien mdr)
+        auto lastUpdate = std::chrono::steady_clock::now();
+
+        while (g_running) {
+            auto now = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now - lastUpdate).count();
+
+            if (elapsed >= 16) {  // ~60 FPS
+                update(deltaTime);
+                lastUpdate = now;
+            }
+
+            processEntityEvents();  // Process events for each entity
+            runSystems();
+            // Sleep a bit bro
+            // std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+
+        std::cout << "[Server] Stopping server..." << std::endl;
+        stop();
+        std::cout << "[Server] Server stopped. Goodbye!" << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "[Server] Fatal error: " << e.what() << std::endl;
+        return;  // Should throw
+    }
+}
+
 bool RtypeServer::start() {
     return _server.start();
 }
@@ -59,10 +117,6 @@ void RtypeServer::stop() {
 void RtypeServer::update(float delta_time) {
     _server.receive(0, 100);
     _server.update(delta_time);
-
-    // Update entity movement every frame
-    updateMovement(delta_time);
-
     // Broadcast entity state every 100ms
     _state_broadcast_timer += delta_time;
     if (_state_broadcast_timer >= 0.1f) {
@@ -90,6 +144,10 @@ void RtypeServer::registerProtocolHandlers() {
     _server.registerPacketHandler(PONG,
         [this](const std::vector<uint8_t>& data, const net::Address& sender) {
             handlePong(data, sender);
+        });
+
+    _server.registerPacketHandler(CLIENT_EVENT, [this](const std::vector<uint8_t>& data, const net::Address& sender) {
+        handleUserEvent(data, sender);
         });
 }
 
@@ -134,13 +192,12 @@ void RtypeServer::handleDisconnection(const std::vector<uint8_t>& data,
     std::cout << "[Server] Client disconnected: " << sender.getIP()
               << ":" << sender.getPort() << std::endl;
 
-    // Remove entity from tracking
     std::string addr_key = addressToString(sender);
     auto it = _client_entities.find(addr_key);
     if (it != _client_entities.end()) {
         size_t entity_id = it->second;
         std::cout << "[Server] Removing entity " << entity_id << std::endl;
-        _ecs.killEntity(entity_id);
+        removeEntity(entity_id);
         _client_entities.erase(it);
     }
 }
@@ -156,8 +213,55 @@ void RtypeServer::handlePong(const std::vector<uint8_t>& data, const net::Addres
               << sender.getPort() << std::endl;
 }
 
+void RtypeServer::handleUserEvent(const std::vector<uint8_t>& data, const net::Address& sender) {
+    te::event::Events events;
+    if (!net::PacketSerializer::deserialize(data, events)) {
+        std::cerr << "[Server] Failed to deserialize events (size: " << data.size()
+                  << ", expected: " << sizeof(te::event::Events) << ")" << std::endl;
+        return;
+    }
+
+    // Find the entity associated with this client
+    std::string addr_key = addressToString(sender);
+    auto it = _client_entities.find(addr_key);
+    if (it == _client_entities.end()) {
+        std::cerr << "[Server] Received event from unknown client: "
+                  << sender.getIP() << ":" << sender.getPort() << std::endl;
+        return;
+    }
+
+    size_t entity_id = it->second;
+    _entity_events[entity_id] = events;
+}
+
+void RtypeServer::processEntityEvents() {
+    // TODO(Pierre): Vérifier qu'en l'enlevant ca marche pareil
+    auto& velocities = getComponent<addon::physic::Velocity2>();
+    for (const auto& [addr, entity_id] : _client_entities) {
+        if (entity_id < velocities.size() && velocities[entity_id].has_value()) {
+            auto& vel = velocities[entity_id].value();
+            vel.x = 0.0;
+            vel.y = 0.0;
+        }
+    }
+
+    for (auto& [entity_id, events] : _entity_events) {
+        // Set the events and emit them for this specific entity
+        setEvents(events);
+        emit(entity_id);  // Pass entity_id to target only this entity
+    }
+
+    // Clear all events after processing
+    _entity_events.clear();
+}
+
 void RtypeServer::append(std::vector<uint8_t>& vec, uint32_t value) const {
-    // Protocol already handles endianness conversion, just copy bytes
+    std::array<uint8_t, 4> bytes;
+    std::memcpy(bytes.data(), &value, 4);
+    vec.insert(vec.end(), bytes.begin(), bytes.end());
+}
+
+void RtypeServer::append(std::vector<uint8_t>& vec, float value) const {
     std::array<uint8_t, 4> bytes;
     std::memcpy(bytes.data(), &value, 4);
     vec.insert(vec.end(), bytes.begin(), bytes.end());
@@ -175,39 +279,24 @@ size_t RtypeServer::spawnPlayerEntity(const net::Address& client) {
     static size_t next_entity_id = 0;
     size_t entity = next_entity_id++;
 
-    _ecs.addComponent(entity, addon::physic::Position2(0.0f, 0.0f));
-    _ecs.addComponent(entity, addon::physic::Velocity2(10.0f, 5.0f));
+    createComponent("position2", entity);
+    createComponent("velocity2", entity);
+    createComponent("player", entity);
 
     std::string addr_key = addressToString(client);
     _client_entities[addr_key] = entity;
     return entity;
 }
 
-void RtypeServer::updateMovement(float delta_time) {
-    // Use TrueEngine movement system
-    addon::physic::movement2_sys(_ecs);
-
-    // Apply screen wrapping (800x600)
-    auto& positions = _ecs.getComponents<addon::physic::Position2>();
-    for (size_t i = 0; i < positions.size(); ++i) {
-        if (positions[i].has_value()) {
-            auto& pos = positions[i].value();
-            if (pos.x > 800.0f)
-                pos.x = 0.0f;
-            if (pos.y > 600.0f)
-                pos.y = 0.0f;
-        }
-    }
-}
-
 void RtypeServer::sendEntityState() {
-    if (_server.getClientCount() == 0) return;
+    if (_server.getClientCount() == 0)
+        return;
 
     std::vector<uint8_t> packet;
     packet.push_back(ENTITY_STATE);
 
     // Get all entities with Position2
-    auto& positions = _ecs.getComponents<addon::physic::Position2>();
+    auto& positions = getComponent<addon::physic::Position2>();
     uint32_t entity_count = 0;
     for (size_t i = 0; i < positions.size(); ++i) {
         if (positions[i].has_value()) {
@@ -215,11 +304,10 @@ void RtypeServer::sendEntityState() {
         }
     }
 
-    append(packet, entity_count);
+    append(packet, entity_count);  // On pourrait l'enlever plus tard
 
-    // Add each entity's data: [id, x, y]
     static int broadcast_counter = 0;
-    bool should_log = (broadcast_counter++ % 10 == 0);  // Log every 10 broadcasts (1 second)
+    bool should_log = (broadcast_counter++ % 10 == 0);  // Log every 10 broadcasts
 
     if (should_log) {
         std::cout << "[Server] Broadcasting ENTITY_STATE with " << entity_count
@@ -230,10 +318,9 @@ void RtypeServer::sendEntityState() {
         if (positions[i].has_value()) {
             const auto& pos = positions[i].value();
 
-            // Convert float positions to uint32_t for network protocol
             append(packet, static_cast<uint32_t>(i));
-            append(packet, static_cast<uint32_t>(pos.x));
-            append(packet, static_cast<uint32_t>(pos.y));
+            append(packet, pos.x);
+            append(packet, pos.y);
 
             if (should_log) {
                 std::cout << "  - Entity " << i << " at (" << pos.x << ", "

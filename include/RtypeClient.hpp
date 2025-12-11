@@ -3,18 +3,28 @@
 #include <string>
 #include <cstdint>
 #include <vector>
+#include <chrono>
+#include <unordered_map>
+#include <GameTool.hpp>
 #include <network/GameClient.hpp>
+#include "event/events.hpp"
+#include "Game.hpp"
 #include "Protocol.hpp"
 
-class RtypeClient {
+class RtypeClient : public Game {
  public:
-    explicit RtypeClient(ECS::Registry& ecs, const std::string& protocol = "UDP");
+    explicit RtypeClient(const std::string& protocol = "UDP",
+         uint16_t port = 5000, const std::string& server_ip = "127.0.0.1");
     ~RtypeClient();
+
+    void run();
 
     bool connect(const std::string& ip, uint16_t port);
     void disconnect();
 
     void update(float delta_time);
+
+    void sendEvent();
 
     bool isConnected() const { return _client.isConnected(); }
 
@@ -22,10 +32,15 @@ class RtypeClient {
 
     // Public API for testing/debugging
     void sendPing();
+    std::chrono::_V2::steady_clock::time_point _pingTime;
 
  private:
     te::network::GameClient _client;
-    ECS::Registry& _ecs;
+    uint16_t _server_port;
+    std::string _server_ip;
+    uint32_t next_entity_id = 1;
+
+    std::unordered_map<uint32_t, uint32_t> _serverToClientEntityMap;
 
     void registerProtocolHandlers();
 
@@ -41,4 +56,5 @@ class RtypeClient {
 
     void append(std::vector<uint8_t>& vec, uint32_t value) const;
     uint32_t extractUint32(const std::vector<uint8_t>& data, size_t offset) const;
+    float extractFloat(const std::vector<uint8_t>& data, size_t offset) const;
 };
