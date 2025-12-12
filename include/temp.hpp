@@ -3,6 +3,7 @@
 ** GameOne
 ** File description:
 ** temp.hpp
+** Copyright [2025] <DeepestDungeonGroup>
 */
 
 #pragma once

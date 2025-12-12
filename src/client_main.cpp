@@ -1,3 +1,11 @@
+/*
+** EPITECH PROJECT, 2025
+** GameOne
+** File description:
+** client_main.cpp
+** Copyright [2025] <DeepestDungeonGroup>
+*/
+
 #include <iostream>
 #include <csignal>
 #include <atomic>

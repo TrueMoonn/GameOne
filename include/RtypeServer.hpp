@@ -1,3 +1,11 @@
+/*
+** EPITECH PROJECT, 2025
+** GameOne
+** File description:
+** RtypeServer.hpp
+** Copyright [2025] <DeepestDungeonGroup>
+*/
+
 #pragma once
 
 #include <string>
@@ -6,8 +14,8 @@
 #include <unordered_map>
 #include <network/GameServer.hpp>
 #include <GameTool.hpp>
-#include "Game.hpp"
-#include "Protocol.hpp"
+#include <Game.hpp>
+#include <Protocol.hpp>
 
 class RtypeServer : public Game {
  public:
@@ -27,8 +35,8 @@ class RtypeServer : public Game {
     std::string _protocol;
     size_t _max_clients;
 
-    std::unordered_map<std::string, size_t> _client_entities;  // address -> entity index
-    std::unordered_map<size_t, te::event::Events> _entity_events;  // entity -> events
+    std::unordered_map<std::string, size_t> _client_entities;
+    std::unordered_map<size_t, te::event::Events> _entity_events;
     float _state_broadcast_timer;
 
     bool start();
@@ -47,10 +55,13 @@ class RtypeServer : public Game {
                                   const net::Address& sender);
     void handleDisconnection(const std::vector<uint8_t>& data,
                             const net::Address& sender);
-    void handlePing(const std::vector<uint8_t>& data, const net::Address& sender);
-    void handlePong(const std::vector<uint8_t>& data, const net::Address& sender);
+    void handlePing(const std::vector<uint8_t>& data,
+      const net::Address& sender);
+    void handlePong(const std::vector<uint8_t>& data,
+      const net::Address& sender);
 
-    void handleUserEvent(const std::vector<uint8_t>& data, const net::Address& sender);
+    void handleUserEvent(const std::vector<uint8_t>& data,
+      const net::Address& sender);
 
     size_t spawnPlayerEntity(const net::Address& client);
     void processEntitiesEvents();  // Process events for each entity

@@ -1,38 +1,50 @@
+/*
+** EPITECH PROJECT, 2025
+** GameOne
+** File description:
+** RtypeClient.cpp
+** Copyright [2025] <DeepestDungeonGroup>
+*/
+
+#include <arpa/inet.h>
 #include <algorithm>
 #include <array>
-#include <arpa/inet.h>
 #include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <iostream>
 #include <string>
 #include <csignal>
-#include <array>
 #include <vector>
-#include <RtypeClient.hpp>
-#include <GameTool.hpp>
 #include <physic/components/position.hpp>
 #include <event/events.hpp>
+#include <RtypeClient.hpp>
+#include <GameTool.hpp>
 
-RtypeClient::RtypeClient(const std::string& protocol, uint16_t port, const std::string& server_ip)
+RtypeClient::RtypeClient(const std::string& protocol, uint16_t port,
+    const std::string& server_ip)
     : Game("./plugins_client")
     , _client(protocol)
     , _server_port(port)
     , _server_ip(server_ip) {
-    addConfig("./assets/config/player.toml");
     createComponent("window", 0);
-    registerProtocolHandlers();
+
     createSystem("movement2");
     createSystem("draw");
     createSystem("display");
+
+    addConfig("./assets/config/player.toml");
+
+    registerProtocolHandlers();
     _client.setConnectCallback([this]() {
-        std::cout << "[Client] Network connection established, sending CONNECTION_REQUEST..."
-                  << std::endl;
+        std::cout
+        << "[Client] Network connection established, "
+        << "sending CONNECTION_REQUEST...\n";
         sendConnectionRequest();
     });
 
     _client.setDisconnectCallback([this]() {
-        std::cout << "[Client] Disconnected from server" << std::endl;
+        std::cout << "[Client] Disconnected from server\n";
         // TODO(Pierre): Cleanup local entities, return to menu, etc.
     });
 }
@@ -45,36 +57,37 @@ RtypeClient::~RtypeClient() {
 
 void signalHandler(int signal) {
     if (signal == SIGINT || signal == SIGTERM) {
-        std::cout << "\n[Client] Disconnecting..." << std::endl;
+        std::cout << "\n[Client] Disconnecting...\n";
         return;  // Throw or exit
     }
 }
 
 void RtypeClient::run() {
-    std::cout << "=== R-Type Client ===" << std::endl;
-    std::cout << "Server: " << _server_ip << ":" << _server_port << std::endl;
-    std::cout << "=====================" << std::endl;
+    std::cout << "=== R-Type Client ===\n";
+    std::cout << "Server: " << _server_ip << ":" << _server_port << "\n";
+    std::cout << "=====================\n";
 
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
 
     try {
-        std::cout << "[Client] Connecting to server..." << std::endl;
+        std::cout << "[Client] Connecting to server...\n";
         if (!connect(_server_ip, _server_port)) {
-            std::cerr << "[Client] Failed to connect to server" << std::endl;
+            std::cerr << "[Client] Failed to connect to server\n";
             return;  // TODO(Pierre): devrait throw peut etre
         }
 
-        std::cout << "[Client] Connected! Starting game loop..." << std::endl;
-        std::cout << "[Client] Press Ctrl+C to disconnect" << std::endl;
+        std::cout << "[Client] Connected! Starting game loop...\n";
+        std::cout << "[Client] Press Ctrl+C to disconnect\n";
 
-        const float deltaTime = 1.0f / 60.0f;  // 60 FPS  (ca sert à rien car update n'utilise pas delta_time mdr)
+        const float deltaTime = 1.0f / 60.0f;  // TODO(Pierre): voir update()
         auto lastUpdate = std::chrono::steady_clock::now();
         auto lastPing = std::chrono::steady_clock::now();
 
         while (!isEvent(te::event::System::Closed) && isConnected()) {
             auto now = std::chrono::steady_clock::now();
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            auto elapsed =
+                std::chrono::duration_cast<std::chrono::milliseconds>(
                 now - lastUpdate).count();
 
             if (elapsed >= 16) {  // ~60 FPS
@@ -83,18 +96,21 @@ void RtypeClient::run() {
             }
 
            // Send ping every 5 seconds
-            auto pingElapsed = std::chrono::duration_cast<std::chrono::seconds>(
+            auto pingElapsed =
+                std::chrono::duration_cast<std::chrono::seconds>(
                 now - lastPing).count();
             if (pingElapsed >= 5) {
-                std::cout << "[Client] Sending PING..." << std::endl;
+                std::cout << "[Client] Sending PING...\n";
                 sendPing();
                 lastPing = now;
             }
 
             pollEvent();
             auto events = getEvents();
-            if ((events.keys.keys[te::event::Z] || events.keys.keys[te::event::Q] ||
-                 events.keys.keys[te::event::S] || events.keys.keys[te::event::D])) {
+            if ((events.keys.keys[te::event::Z]
+                || events.keys.keys[te::event::Q]
+                || events.keys.keys[te::event::S]
+                || events.keys.keys[te::event::D])) {
                 sendEvent(events);
             }
 
@@ -106,12 +122,12 @@ void RtypeClient::run() {
         }
 
         if (isConnected()) {
-            std::cout << "[Client] Disconnecting..." << std::endl;
+            std::cout << "[Client] Disconnecting...\n";
             disconnect();
         }
-        std::cout << "[Client] Goodbye!" << std::endl;
+        std::cout << "[Client] Goodbye!\n";
     } catch (const std::exception& e) {
-        std::cerr << "[Client] Fatal error: " << e.what() << std::endl;
+        std::cerr << "[Client] Fatal error: " << e.what() << "\n";
         return;  // TODO(Pierre): devrait throw
     }
 }
@@ -216,14 +232,15 @@ void RtypeClient::sendPong() {
 
 void RtypeClient::handleConnectionAccepted(const std::vector<uint8_t>& data) {
     if (data.size() < 4) {
-        std::cerr << "[Client] Invalid CONNECTION_ACCEPTED packet size" << std::endl;
+        std::cerr << "[Client] Invalid CONNECTION_ACCEPTED packet size\n";
         return;
     }
 
     uint32_t entity_id = extractUint32(data, 0);
     _my_server_entity_id = entity_id;
 
-    std::cout << "[Client] Connection accepted! Our server entity ID: " << entity_id << std::endl;
+    std::cout << "[Client] Connection accepted! Our server entity ID: "
+        << entity_id << "\n";
 
     // Create our player entity locally
     uint32_t client_id = next_entity_id++;
@@ -231,26 +248,26 @@ void RtypeClient::handleConnectionAccepted(const std::vector<uint8_t>& data) {
     createEntity(client_id, "player", {0, 0});
     _serverToClientEntityMap[entity_id] = client_id;
 
-    std::cout << "[Client] Created local player entity: server_id=" << entity_id
-              << " -> client_id=" << client_id << std::endl;
+    std::cout << "[Client] Created local player entity: server_id="
+        << entity_id << " -> client_id=" << client_id << "\n";
 }
 
 void RtypeClient::handleDisconnection(const std::vector<uint8_t>& data) {
-    std::cout << "[Client] Server disconnected us" << std::endl;
+    std::cout << "[Client] Server disconnected us\n";
 }
 
 void RtypeClient::handleServerFull(const std::vector<uint8_t>& data) {
-    std::cout << "[Client] Server full!" << std::endl;
-    disconnect();  //  On pourrait le laisser attendre mais pour le moment
+    std::cout << "[Client] Server full!\n";
+    disconnect();  // TODO(PIERRE): On pourrait le laisser attendre
 }
 
 void RtypeClient::handlePing(const std::vector<uint8_t>& data) {
-    std::cout << "[Client] Ping received, sending pong..." << std::endl;
+    std::cout << "[Client] Ping received, sending pong...\n";
     sendPong();
 }
 
 void RtypeClient::handlePong(const std::vector<uint8_t>& data) {
-    std::cout << "[Client] Pong received" << std::endl;
+    std::cout << "[Client] Pong received\n";
     auto now = std::chrono::steady_clock::now();
     auto pingElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                 now - getPing()).count();
@@ -292,7 +309,7 @@ void RtypeClient::handleEntityState(const std::vector<uint8_t>& data) {
     if (data.size() < expected_size) {
         std::cerr << "[Client] Invalid ENTITY_STATE packet size: got "
                   << data.size() << ", expected " << expected_size
-                  << ", entity_count=" << entity_count << std::endl;
+                  << ", entity_count=" << entity_count << "\n";
         return;
     }
 
@@ -303,34 +320,40 @@ void RtypeClient::handleEntityState(const std::vector<uint8_t>& data) {
         float y = extractFloat(data, offset + 8);
         offset += 12;
 
-        if (_my_server_entity_id.has_value() && server_id == _my_server_entity_id.value()) {
+        if (_my_server_entity_id.has_value()
+            && server_id == _my_server_entity_id.value()) {
             continue;
         }
 
         auto& positions = getComponent<addon::physic::Position2>();
 
         uint32_t client_id;
-        if (_serverToClientEntityMap.find(server_id) == _serverToClientEntityMap.end()) {
+        if (_serverToClientEntityMap.find(server_id)
+            == _serverToClientEntityMap.end()) {
             client_id = next_entity_id++;
             createEntity(client_id, "player", {0, 0});
             _serverToClientEntityMap[server_id] = client_id;
-            std::cout << "[Client] Created OTHER player entity: server_id=" << server_id
-                      << " -> client_id=" << client_id << " at position ("
-                      << x << ", " << y << ")" << std::endl;
+            std::cout << "[Client] Created OTHER player entity: server_id="
+                << server_id << " -> client_id=" << client_id
+                << " at position (" << x << ", " << y << ")\n";
         } else {
             client_id = _serverToClientEntityMap[server_id];
         }
 
         // Update the entity's position
-        if (client_id < positions.size() && positions[client_id].has_value()) {
+        if (client_id < positions.size()
+            && positions[client_id].has_value()) {
             positions[client_id].value().x = x;
             positions[client_id].value().y = y;
-            std::cout << "[Client] Updated OTHER player entity server_id=" << server_id
-                      << " (client_id=" << client_id << ") to position ("
-                      << x << ", " << y << ")" << std::endl;
+            std::cout << "[Client] Updated OTHER player entity server_id="
+                << server_id
+                << " (client_id=" << client_id << ") to position ("
+                << x << ", " << y << ")\n";
         } else {
-            std::cout << "[Client] ERROR: Cannot update position for client_id=" << client_id
-                      << " (positions.size()=" << positions.size() << ")" << std::endl;
+            std::cout
+                << "[Client] ERROR: Cannot update position for client_id="
+                << client_id
+                << " (positions.size()=" << positions.size() << ")\n";
         }
     }
 }

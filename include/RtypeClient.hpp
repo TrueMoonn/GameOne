@@ -1,3 +1,11 @@
+/*
+** EPITECH PROJECT, 2025
+** GameOne
+** File description:
+** RtypeClient.hpp
+** Copyright [2025] <DeepestDungeonGroup>
+*/
+
 #pragma once
 
 #include <string>
@@ -7,9 +15,9 @@
 #include <unordered_map>
 #include <GameTool.hpp>
 #include <network/GameClient.hpp>
-#include "event/events.hpp"
-#include "Game.hpp"
-#include "Protocol.hpp"
+#include <event/events.hpp>
+#include <Game.hpp>
+#include <Protocol.hpp>
 
 class RtypeClient : public Game {
  public:
@@ -19,7 +27,6 @@ class RtypeClient : public Game {
 
     void run();
 
-    // Public API for testing/debugging
     void sendPing();
 
     std::chrono::_V2::steady_clock::time_point getPing();
@@ -57,6 +64,6 @@ class RtypeClient : public Game {
     void handleEntityState(const std::vector<uint8_t>& data);
 
     void append(std::vector<uint8_t>& vec, uint32_t value) const;
-    uint32_t extractUint32(const std::vector<uint8_t>& data, size_t offset) const;
-    float extractFloat(const std::vector<uint8_t>& data, size_t offset) const;
+    uint32_t extractUint32(const std::vector<uint8_t>& data, size_t off) const;
+    float extractFloat(const std::vector<uint8_t>& data, size_t off) const;
 };

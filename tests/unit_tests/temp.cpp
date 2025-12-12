@@ -1,8 +1,9 @@
 /*
 ** EPITECH PROJECT, 2025
-** TrueEngine
+** GameOne
 ** File description:
 ** temp.cpp
+** Copyright [2025] <DeepestDungeonGroup>
 */
 
 #include <gtest/gtest.h>

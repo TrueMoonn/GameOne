@@ -1,3 +1,11 @@
+/*
+** EPITECH PROJECT, 2025
+** GameOne
+** File description:
+** Game.hpp
+** Copyright [2025] <DeepestDungeonGroup>
+*/
+
 #pragma once
 
 #include <string>

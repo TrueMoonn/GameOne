@@ -1,3 +1,11 @@
+/*
+** EPITECH PROJECT, 2025
+** GameOne
+** File description:
+** Protocol.hpp
+** Copyright [2025] <DeepestDungeonGroup>
+*/
+
 #pragma once
 
 #include <cstdint>
@@ -11,5 +19,5 @@ enum ProtocolCode : uint8_t {
     PING = 6,
     PONG = 7,
     CLIENT_EVENT = 50,
-    ENTITY_STATE = 51  // Broadcast entity positions [uint32_t id, uint32_t x, uint32_t y, ...]
+    ENTITY_STATE = 51  // Broadcast entities positions (float)
 };
