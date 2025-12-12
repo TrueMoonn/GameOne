@@ -1,4 +1,28 @@
 #!/bin/bash
+
+copy_plugins() {
+    echo "Copying plugins..."
+
+    mkdir -p ./plugins_server
+    mkdir -p ./plugins_client
+    
+    # You have to select the plugin you want for each side (Client/Server)
+
+    # Copy plugins for server (no display/sfml needed)
+    cp -f ./TrueEngine/plugins/interaction.so ./plugins_server/ 2>/dev/null || true
+    cp -f ./TrueEngine/plugins/physic.so ./plugins_server/ 2>/dev/null || true
+    cp -f ./TrueEngine/plugins/entity_spec.so ./plugins_server/ 2>/dev/null || true
+    
+    # Copy plugins for client (all plugins)
+    cp -f ./TrueEngine/plugins/interaction.so ./plugins_client/ 2>/dev/null || true
+    cp -f ./TrueEngine/plugins/physic.so ./plugins_client/ 2>/dev/null || true
+    cp -f ./TrueEngine/plugins/entity_spec.so ./plugins_client/ 2>/dev/null || true
+    cp -f ./TrueEngine/plugins/display.so ./plugins_client/ 2>/dev/null || true
+    cp -f ./TrueEngine/plugins/sfml.so ./plugins_client/ 2>/dev/null || true
+    
+    echo "Plugins copied successfully!"
+}
+
 if [[ $1 == "--build" || $1 == "-b" ]]
 then
     echo "------------BUILD------------"
@@ -9,6 +33,7 @@ then
         cd ..
     fi
     cmake --build ./build/ -j
+    copy_plugins
     echo "------------END------------"
 
 elif [[ $1 == "--re-build" || $1 == "-rb" ]]
@@ -21,6 +46,7 @@ then
     cmake ..
     cmake --build . -j
     cd ..
+    copy_plugins
     echo "------------END------------"
 
 # elif [[ $1 == "--build-tests" || $1 == "-t" ]]
@@ -49,6 +75,7 @@ then
     cmake .. -DCMAKE_BUILD_TYPE=Debug
     cmake --build . -v -j
     cd ..
+    copy_plugins
     echo "------------END------------"
 
 elif [[ $1 == "--clear" || $1 == "-c" ]]
