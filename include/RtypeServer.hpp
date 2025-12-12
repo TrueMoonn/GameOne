@@ -20,13 +20,13 @@ class RtypeServer : public Game {
 
     te::network::GameServer& getServer() { return _server; }
     size_t getClientCount() const { return _server.getClientCount(); }
-    int _pingTime = 0;
 
  private:
     te::network::GameServer _server;
     uint16_t _port;
     std::string _protocol;
     size_t _max_clients;
+
     std::unordered_map<std::string, size_t> _client_entities;  // address -> entity index
     std::unordered_map<size_t, te::event::Events> _entity_events;  // entity -> events
     float _state_broadcast_timer;
@@ -37,6 +37,7 @@ class RtypeServer : public Game {
 
     void registerProtocolHandlers();
 
+    void sendConnectionAccepted(const net::Address& client, size_t entity_id);
     void sendErrorTooManyClients(const net::Address& client);
     void sendPong(const net::Address& client);
     void sendDisconnection(const net::Address& client);
@@ -52,7 +53,6 @@ class RtypeServer : public Game {
     void handleUserEvent(const std::vector<uint8_t>& data, const net::Address& sender);
 
     size_t spawnPlayerEntity(const net::Address& client);
-    void updateMovement(float delta_time);
     void processEntityEvents();  // Process events for each entity
 
     std::string addressToString(const net::Address& addr) const;

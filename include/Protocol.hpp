@@ -7,6 +7,7 @@ enum ProtocolCode : uint8_t {
     CONNECTION_REQUEST = 1,
     DISCONNECTION = 2,
     ERROR_TOO_MANY_CLIENTS = 3,
+    CONNECTION_ACCEPTED = 4,  // Server → Client: [uint32_t entity_id]
     PING = 6,
     PONG = 7,
     CLIENT_EVENT = 50,

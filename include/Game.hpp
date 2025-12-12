@@ -1,10 +1,12 @@
 #pragma once
 
+#include <string>
+
 #include <GameTool.hpp>
 
 class Game : public te::GameTool {
  public:
-    Game() = default;
+    explicit Game(const std::string& dir);
     ~Game();
 
  private:

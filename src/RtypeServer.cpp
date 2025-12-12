@@ -22,14 +22,14 @@ static std::atomic<bool> g_running(true);
 RtypeServer::RtypeServer(uint16_t port,
                          const std::string& protocol,
                          size_t max_clients)
-    : _server(port, protocol)
+    : Game("./plugins_server")
+    , _server(port, protocol)
     , _port(port)
     , _protocol(protocol)
     , _max_clients(max_clients)
     , _state_broadcast_timer(0.0f) {
     registerProtocolHandlers();
 
-    loadPlugins("./plugins_server");  // TODO(Pierre): vérifier que si je le load dans le constructeur de Game ca marche
     createSystem("movement2");
     _server.setClientConnectCallback([this](const net::Address& client) {
         std::cout << "[Server] Network connection from: "
@@ -158,6 +158,14 @@ void RtypeServer::sendErrorTooManyClients(const net::Address& client) {
     _server.sendTo(client, packet);
 }
 
+void RtypeServer::sendConnectionAccepted(const net::Address& client, size_t entity_id) {
+    std::vector<uint8_t> packet;
+
+    packet.push_back(CONNECTION_ACCEPTED);
+    append(packet, static_cast<uint32_t>(entity_id));
+    _server.sendTo(client, packet);
+}
+
 void RtypeServer::sendPong(const net::Address& client) {
     std::vector<uint8_t> packet;
 
@@ -185,6 +193,8 @@ void RtypeServer::handleConnectionRequest(const std::vector<uint8_t>& data,
     std::cout << "[Server] Client connected: " << sender.getIP() << ":"
               << sender.getPort() << " (" << (_server.getClientCount())
               << "/" << _max_clients << ") - Entity ID: " << entity_id << std::endl;
+
+    sendConnectionAccepted(sender, entity_id);
 }
 
 void RtypeServer::handleDisconnection(const std::vector<uint8_t>& data,
@@ -221,7 +231,6 @@ void RtypeServer::handleUserEvent(const std::vector<uint8_t>& data, const net::A
         return;
     }
 
-    // Find the entity associated with this client
     std::string addr_key = addressToString(sender);
     auto it = _client_entities.find(addr_key);
     if (it == _client_entities.end()) {
@@ -235,7 +244,6 @@ void RtypeServer::handleUserEvent(const std::vector<uint8_t>& data, const net::A
 }
 
 void RtypeServer::processEntityEvents() {
-    // TODO(Pierre): Vérifier qu'en l'enlevant ca marche pareil
     auto& velocities = getComponent<addon::physic::Velocity2>();
     for (const auto& [addr, entity_id] : _client_entities) {
         if (entity_id < velocities.size() && velocities[entity_id].has_value()) {
@@ -246,12 +254,9 @@ void RtypeServer::processEntityEvents() {
     }
 
     for (auto& [entity_id, events] : _entity_events) {
-        // Set the events and emit them for this specific entity
         setEvents(events);
-        emit(entity_id);  // Pass entity_id to target only this entity
+        emit(entity_id);
     }
-
-    // Clear all events after processing
     _entity_events.clear();
 }
 
@@ -275,7 +280,6 @@ std::string RtypeServer::addressToString(const net::Address& addr) const {
 }
 
 size_t RtypeServer::spawnPlayerEntity(const net::Address& client) {
-    // Create entity at position (0, 0) with a velocity for automatic movement
     static size_t next_entity_id = 0;
     size_t entity = next_entity_id++;
 
@@ -295,7 +299,6 @@ void RtypeServer::sendEntityState() {
     std::vector<uint8_t> packet;
     packet.push_back(ENTITY_STATE);
 
-    // Get all entities with Position2
     auto& positions = getComponent<addon::physic::Position2>();
     uint32_t entity_count = 0;
     for (size_t i = 0; i < positions.size(); ++i) {

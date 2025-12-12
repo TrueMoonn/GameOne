@@ -15,11 +15,11 @@
 #include <event/events.hpp>
 
 RtypeClient::RtypeClient(const std::string& protocol, uint16_t port, const std::string& server_ip)
-    : _client(protocol), _server_port(port), _server_ip(server_ip) {
-
-    loadPlugins("./plugins_client");  // TODO(Pierre): vérifier que si je le load dans le constructeur de Game ca marche
+    : Game("./plugins_client")
+    , _client(protocol)
+    , _server_port(port)
+    , _server_ip(server_ip) {
     addConfig("./assets/config/player.toml");
-    createEntity(5000, "player", {0, 0});
     createComponent("window", 0);
     registerProtocolHandlers();
     createSystem("movement2");
@@ -68,7 +68,7 @@ void RtypeClient::run() {
         std::cout << "[Client] Connected! Starting game loop..." << std::endl;
         std::cout << "[Client] Press Ctrl+C to disconnect" << std::endl;
 
-        const float deltaTime = 1.0f / 60.0f;  // 60 FPS  (actuellement ca sert à rien mdr)
+        const float deltaTime = 1.0f / 60.0f;  // 60 FPS  (ca sert à rien car update n'utilise pas delta_time mdr)
         auto lastUpdate = std::chrono::steady_clock::now();
         auto lastPing = std::chrono::steady_clock::now();
 
@@ -92,10 +92,16 @@ void RtypeClient::run() {
             }
 
             pollEvent();
-            emit();
-            if (isEvent(te::event::System::KeyPressed)) {
-                sendEvent();
+            auto events = getEvents();
+            if ((events.keys.keys[te::event::Z] || events.keys.keys[te::event::Q] ||
+                 events.keys.keys[te::event::S] || events.keys.keys[te::event::D])) {
+                sendEvent(events);
             }
+
+            if (_my_client_entity_id.has_value()) {
+                emit(_my_client_entity_id);
+            }
+
             runSystems();
 
             // Sleep a bit bro
@@ -113,7 +119,15 @@ void RtypeClient::run() {
     }
 }
 
-void RtypeClient::sendEvent() {
+std::chrono::_V2::steady_clock::time_point RtypeClient::getPing() {
+    return _pingTime;
+}
+
+void RtypeClient::setPing(std::chrono::_V2::steady_clock::time_point time) {
+    _pingTime = time;
+}
+
+void RtypeClient::sendEvent(te::event::Events events) {
     if (!isConnected()) {
         return;
     }
@@ -121,13 +135,9 @@ void RtypeClient::sendEvent() {
     std::vector<uint8_t> packet;
 
     packet.push_back(CLIENT_EVENT);
-    std::vector<uint8_t> temp = net::PacketSerializer::serialize(getEvents());
+    std::vector<uint8_t> temp = net::PacketSerializer::serialize(events);
     std::copy(temp.begin(), temp.end(), back_inserter(packet));
     _client.send(packet);
-
-    auto events = getEvents();
-    events.keys.clear();
-    setEvents(events);
 }
 
 bool RtypeClient::connect(const std::string& ip, uint16_t port) {
@@ -147,6 +157,11 @@ void RtypeClient::update(float delta_time) {
 }
 
 void RtypeClient::registerProtocolHandlers() {
+    _client.registerPacketHandler(CONNECTION_ACCEPTED,
+        [this](const std::vector<uint8_t>& data) {
+            handleConnectionAccepted(data);
+        });
+
     _client.registerPacketHandler(DISCONNECTION,
         [this](const std::vector<uint8_t>& data) {
             handleDisconnection(data);
@@ -190,7 +205,7 @@ void RtypeClient::sendDisconnection() {
 void RtypeClient::sendPing() {
     std::vector<uint8_t> packet;
 
-    _pingTime = std::chrono::steady_clock::now();
+    setPing(std::chrono::steady_clock::now());
     packet.push_back(PING);
     _client.send(packet);
 }
@@ -200,6 +215,27 @@ void RtypeClient::sendPong() {
 
     packet.push_back(PONG);
     _client.send(packet);
+}
+
+void RtypeClient::handleConnectionAccepted(const std::vector<uint8_t>& data) {
+    if (data.size() < 4) {
+        std::cerr << "[Client] Invalid CONNECTION_ACCEPTED packet size" << std::endl;
+        return;
+    }
+
+    uint32_t entity_id = extractUint32(data, 0);
+    _my_server_entity_id = entity_id;
+
+    std::cout << "[Client] Connection accepted! Our server entity ID: " << entity_id << std::endl;
+
+    // Create our player entity locally
+    uint32_t client_id = next_entity_id++;
+    _my_client_entity_id = client_id;
+    createEntity(client_id, "player", {0, 0});
+    _serverToClientEntityMap[entity_id] = client_id;
+
+    std::cout << "[Client] Created local player entity: server_id=" << entity_id
+              << " -> client_id=" << client_id << std::endl;
 }
 
 void RtypeClient::handleDisconnection(const std::vector<uint8_t>& data) {
@@ -220,7 +256,7 @@ void RtypeClient::handlePong(const std::vector<uint8_t>& data) {
     std::cout << "[Client] Pong received" << std::endl;
     auto now = std::chrono::steady_clock::now();
     auto pingElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                now - _pingTime).count();
+                now - getPing()).count();
     std::cout << "Latency between sendPing and receive Pong (in ms): "
         << pingElapsed << "\n";
 }
@@ -263,26 +299,28 @@ void RtypeClient::handleEntityState(const std::vector<uint8_t>& data) {
         return;
     }
 
-    // Log every 10 packets (not every 10 entity updates)
-    static int packet_counter = 0;
-    bool should_log = (packet_counter++ % 10 == 0);
-
-    // Process each entity
     size_t offset = 4;
     for (uint32_t i = 0; i < entity_count; ++i) {
-        uint32_t server_id = extractUint32(data, offset);  // Entity ID is uint32
-        float x = extractFloat(data, offset + 4);  // Position X is float
-        float y = extractFloat(data, offset + 8);  // Position Y is float
+        uint32_t server_id = extractUint32(data, offset);
+        float x = extractFloat(data, offset + 4);
+        float y = extractFloat(data, offset + 8);
         offset += 12;
+
+        //  to remove when movments are fixed
+        if (_my_server_entity_id.has_value() && server_id == _my_server_entity_id.value()) {
+            std::cout << "[Client] Skipping position update for OUR entity (server_id="
+                      << server_id << "), using client-side prediction" << std::endl;
+            continue;
+        }
 
         auto& positions = getComponent<addon::physic::Position2>();
 
         uint32_t client_id;
         if (_serverToClientEntityMap.find(server_id) == _serverToClientEntityMap.end()) {
             client_id = next_entity_id++;
-            createComponent("position2", client_id);
+            createEntity(client_id, "player", {0, 0});
             _serverToClientEntityMap[server_id] = client_id;
-            std::cout << "[Client] Created entity mapping: server_id=" << server_id
+            std::cout << "[Client] Created OTHER player entity: server_id=" << server_id
                       << " -> client_id=" << client_id << " at position ("
                       << x << ", " << y << ")" << std::endl;
         } else {
@@ -293,11 +331,12 @@ void RtypeClient::handleEntityState(const std::vector<uint8_t>& data) {
         if (client_id < positions.size() && positions[client_id].has_value()) {
             positions[client_id].value().x = x;
             positions[client_id].value().y = y;
-            if (should_log) {
-                std::cout << "[Client] Updated entity server_id=" << server_id
-                          << " (client_id=" << client_id << ") to position ("
-                          << x << ", " << y << ") from server" << std::endl;
-            }
+            std::cout << "[Client] Updated OTHER player entity server_id=" << server_id
+                      << " (client_id=" << client_id << ") to position ("
+                      << x << ", " << y << ")" << std::endl;
+        } else {
+            std::cout << "[Client] ERROR: Cannot update position for client_id=" << client_id
+                      << " (positions.size()=" << positions.size() << ")" << std::endl;
         }
     }
 }
