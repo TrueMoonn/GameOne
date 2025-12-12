@@ -62,7 +62,7 @@ void RtypeClient::run() {
         std::cout << "[Client] Connecting to server..." << std::endl;
         if (!connect(_server_ip, _server_port)) {
             std::cerr << "[Client] Failed to connect to server" << std::endl;
-            return;  // (devrait throw peut etre)
+            return;  // TODO(Pierre): devrait throw peut etre
         }
 
         std::cout << "[Client] Connected! Starting game loop..." << std::endl;
@@ -103,9 +103,6 @@ void RtypeClient::run() {
             }
 
             runSystems();
-
-            // Sleep a bit bro
-            // std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
 
         if (isConnected()) {
@@ -115,7 +112,7 @@ void RtypeClient::run() {
         std::cout << "[Client] Goodbye!" << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "[Client] Fatal error: " << e.what() << std::endl;
-        return;  // devrait throw
+        return;  // TODO(Pierre): devrait throw
     }
 }
 
@@ -306,10 +303,7 @@ void RtypeClient::handleEntityState(const std::vector<uint8_t>& data) {
         float y = extractFloat(data, offset + 8);
         offset += 12;
 
-        //  to remove when movments are fixed
         if (_my_server_entity_id.has_value() && server_id == _my_server_entity_id.value()) {
-            std::cout << "[Client] Skipping position update for OUR entity (server_id="
-                      << server_id << "), using client-side prediction" << std::endl;
             continue;
         }
 

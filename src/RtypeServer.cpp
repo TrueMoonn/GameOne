@@ -91,10 +91,8 @@ void RtypeServer::run() {
                 lastUpdate = now;
             }
 
-            processEntityEvents();  // Process events for each entity
+            processEntitiesEvents();
             runSystems();
-            // Sleep a bit bro
-            // std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
 
         std::cout << "[Server] Stopping server..." << std::endl;

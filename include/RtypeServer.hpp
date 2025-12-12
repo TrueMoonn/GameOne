@@ -53,7 +53,7 @@ class RtypeServer : public Game {
     void handleUserEvent(const std::vector<uint8_t>& data, const net::Address& sender);
 
     size_t spawnPlayerEntity(const net::Address& client);
-    void processEntityEvents();  // Process events for each entity
+    void processEntitiesEvents();  // Process events for each entity
 
     std::string addressToString(const net::Address& addr) const;
     void append(std::vector<uint8_t>& vec, uint32_t value) const;
