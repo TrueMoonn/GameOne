@@ -32,6 +32,8 @@ class RtypeClient : public Game {
     std::chrono::_V2::steady_clock::time_point getPing();
     void setPing(std::chrono::_V2::steady_clock::time_point);
 
+    #define FPS 5
+
  private:
     te::network::GameClient _client;
     uint16_t _server_port;

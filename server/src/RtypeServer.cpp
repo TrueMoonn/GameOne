@@ -98,7 +98,7 @@ void RtypeServer::run() {
                 std::chrono::duration_cast<std::chrono::milliseconds>(
                 now - lastUpdate).count();
 
-            if (elapsed >= 16) {  // ~60 FPS
+            if (elapsed >= (1000.0f / FPS)) {
                 update(deltaTime);
                 lastUpdate = now;
             }
@@ -130,7 +130,7 @@ void RtypeServer::stop() {
 
 void RtypeServer::update(float delta_time) {
     _server.update(delta_time);
-    // Broadcast entity state every 100ms
+    // Broadcast entity state every X ms
     _state_broadcast_timer += delta_time;
     if (_state_broadcast_timer >= 0.01f) {
         sendEntityState();

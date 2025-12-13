@@ -90,7 +90,7 @@ void RtypeClient::run() {
                 std::chrono::duration_cast<std::chrono::milliseconds>(
                 now - lastUpdate).count();
 
-            if (elapsed >= 16) {  // ~60 FPS
+            if (elapsed >= (1000.0f / FPS)) {
                 update(deltaTime);
                 lastUpdate = now;
             }
