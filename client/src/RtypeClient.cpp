@@ -23,7 +23,7 @@
 
 RtypeClient::RtypeClient(const std::string& protocol, uint16_t port,
     const std::string& server_ip)
-    : Game("./plugins_client")
+    : Game("./client/plugins")
     , _client(protocol)
     , _server_port(port)
     , _server_ip(server_ip) {
@@ -33,7 +33,7 @@ RtypeClient::RtypeClient(const std::string& protocol, uint16_t port,
     createSystem("draw");
     createSystem("display");
 
-    addConfig("./assets/config/player.toml");
+    addConfig("./config/entities/player.toml");
 
     registerProtocolHandlers();
     _client.setConnectCallback([this]() {

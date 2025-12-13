@@ -22,7 +22,8 @@
 #include <physic/components/velocity.hpp>
 #include <physic/systems/movement.hpp>
 #include <event/events.hpp>
-#include <RtypeServer.hpp>
+
+#include "RtypeServer.hpp"
 
 // Global flag for signal handling
 static std::atomic<bool> g_running(true);
@@ -30,7 +31,7 @@ static std::atomic<bool> g_running(true);
 RtypeServer::RtypeServer(uint16_t port,
                          const std::string& protocol,
                          size_t max_clients)
-    : Game("./plugins_server")
+    : Game("./server/plugins")
     , _server(port, protocol)
     , _port(port)
     , _protocol(protocol)
