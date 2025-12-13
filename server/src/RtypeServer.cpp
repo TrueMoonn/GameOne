@@ -23,7 +23,7 @@
 #include <physic/systems/movement.hpp>
 #include <event/events.hpp>
 
-#include "RtypeServer.hpp"
+#include <RtypeServer.hpp>
 
 // Global flag for signal handling
 static std::atomic<bool> g_running(true);
