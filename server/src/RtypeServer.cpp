@@ -21,7 +21,9 @@
 #include <physic/components/position.hpp>
 #include <physic/components/velocity.hpp>
 #include <physic/systems/movement.hpp>
+#include <entity_spec/components/health.hpp>
 #include <event/events.hpp>
+#include <ECS/Zipper.hpp>
 
 #include <RtypeServer.hpp>
 
@@ -286,17 +288,35 @@ void RtypeServer::append(std::vector<uint8_t>& vec, uint32_t value) const {
     vec.insert(vec.end(), bytes.begin(), bytes.end());
 }
 
+void RtypeServer::append(std::vector<uint8_t>& vec, int64_t value) const {
+    std::array<uint8_t, 8> bytes;
+    std::memcpy(bytes.data(), &value, 8);
+    vec.insert(vec.end(), bytes.begin(), bytes.end());
+}
+
 void RtypeServer::append(std::vector<uint8_t>& vec, float value) const {
     std::array<uint8_t, 4> bytes;
     std::memcpy(bytes.data(), &value, 4);
     vec.insert(vec.end(), bytes.begin(), bytes.end());
 }
 
-
 std::string RtypeServer::addressToString(const net::Address& addr) const {
     std::ostringstream oss;
     oss << addr.getIP() << ":" << addr.getPort();
     return oss.str();
+}
+
+size_t RtypeServer::spawnEnnemyEntity(const net::Address& client) {
+    static size_t next_entity_id = 0;
+    size_t entity = next_entity_id++;
+
+    createComponent("position2", entity);
+    createComponent("velocity2", entity);
+    createComponent("health", entity);
+
+    std::string addr_key = addressToString(client);
+    _client_entities[addr_key] = entity;
+    return entity;
 }
 
 size_t RtypeServer::spawnPlayerEntity(const net::Address& client) {
@@ -306,9 +326,11 @@ size_t RtypeServer::spawnPlayerEntity(const net::Address& client) {
     createComponent("position2", entity);
     createComponent("velocity2", entity);
     createComponent("player", entity);
+    createComponent("health", entity);
 
     std::string addr_key = addressToString(client);
     _client_entities[addr_key] = entity;
+    _players.push_back(entity);
     return entity;
 }
 
@@ -317,39 +339,47 @@ void RtypeServer::sendEntityState() {
         return;
 
     std::vector<uint8_t> packet;
-    packet.push_back(ENTITY_STATE);
+    packet.push_back(ENTITIES_STATES);
 
     auto& positions = getComponent<addon::physic::Position2>();
-    uint32_t entity_count = 0;
-    for (size_t i = 0; i < positions.size(); ++i) {
-        if (positions[i].has_value()) {
-            entity_count++;
-        }
+
+    for (auto &&[entity, pos] : ECS::IndexedZipper(positions)) {
+        auto isPlayer = find(_players.begin(), _players.end(), entity);
+        if (isPlayer != _players.end())
+            continue;
+
+        append(packet, static_cast<uint32_t>(entity));
+        append(packet, pos.x);
+        append(packet, pos.y);
+
+        std::cout << "  - Entity " << entity << " at (" << pos.x << ", "
+            << pos.y << ")" << "\n";
     }
+    _server.broadcastToAll(packet);
+}
 
-    append(packet, entity_count);  // TODO(Pierre): l'enlever si besoin
+void RtypeServer::sendPlayersStates() {
+    if (_server.getClientCount() == 0)
+        return;
 
-    static int broadcast_counter = 0;
-    bool should_log = (broadcast_counter++ % 10 == 0);
+    std::vector<uint8_t> packet;
+    packet.push_back(PLAYERS_STATES);
 
-    if (should_log) {
-        std::cout << "[Server] Broadcasting ENTITY_STATE with " << entity_count
-            << " entities:\n";
-    }
+    auto& positions = getComponent<addon::physic::Position2>();
+    auto& healths = getComponent<addon::eSpec::Health>();
 
-    for (size_t i = 0; i < positions.size(); ++i) {
-        if (positions[i].has_value()) {
-            const auto& pos = positions[i].value();
+    for (auto &&[entity, pos, hp] : ECS::IndexedZipper(positions, healths)) {
+        auto isPlayer = find(_players.begin(), _players.end(), entity);
+        if (isPlayer == _players.end())
+            continue;
 
-            append(packet, static_cast<uint32_t>(i));
-            append(packet, pos.x);
-            append(packet, pos.y);
+        append(packet, static_cast<uint32_t>(entity));
+        append(packet, pos.x);
+        append(packet, pos.y);
+        append(packet, hp.amount);
 
-            if (should_log) {
-                std::cout << "  - Entity " << i << " at (" << pos.x << ", "
-                          << pos.y << ")" << "\n";
-            }
-        }
+        std::cout << "  - Player " << entity << " at (" << pos.x << ", "
+            << pos.y << ", " << hp.amount << ")" << "\n";
     }
 
     _server.broadcastToAll(packet);

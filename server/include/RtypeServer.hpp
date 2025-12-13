@@ -40,6 +40,7 @@ class RtypeServer : public Game {
     std::unordered_map<std::string, size_t> _client_entities;
     std::unordered_map<size_t, te::event::Events> _entity_events;
     float _state_broadcast_timer;
+    std::vector<size_t> _players;
 
     bool start();
     void stop();
@@ -52,6 +53,7 @@ class RtypeServer : public Game {
     void sendPong(const net::Address& client);
     void sendDisconnection(const net::Address& client);
     void sendEntityState();  // Broadcast all entity positions
+    void sendPlayersStates();  // Broadcast all entity positions
 
     void handleConnectionRequest(const std::vector<uint8_t>& data,
                                   const net::Address& sender);
@@ -66,9 +68,12 @@ class RtypeServer : public Game {
       const net::Address& sender);
 
     size_t spawnPlayerEntity(const net::Address& client);
+    size_t spawnEnnemyEntity(const net::Address& client);
+
     void processEntitiesEvents();  // Process events for each entity
 
     std::string addressToString(const net::Address& addr) const;
     void append(std::vector<uint8_t>& vec, uint32_t value) const;
+    void append(std::vector<uint8_t>& vec, int64_t value) const;
     void append(std::vector<uint8_t>& vec, float value) const;
 };
