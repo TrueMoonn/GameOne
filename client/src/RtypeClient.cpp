@@ -203,7 +203,7 @@ void RtypeClient::registerProtocolHandlers() {
 
     _client.registerPacketHandler(ENTITIES_STATES,
         [this](const std::vector<uint8_t>& data) {
-            handleEntityState(data);
+            handleEntitiesStates(data);
         });
 }
 
@@ -289,85 +289,71 @@ void RtypeClient::append(std::vector<uint8_t>& vec, uint32_t value) const {
 
 float RtypeClient::extractFloat(const std::vector<uint8_t>& data,
     size_t offset) const {
-    if (offset + 4 > data.size())
-        return 0;
+    if (offset + sizeof(float) > data.size())
+        throw TypeExtractError("Could not extract float at pos " + offset);
     float value;
-    std::memcpy(&value, data.data() + offset, 4);
+    std::memcpy(&value, data.data() + offset, sizeof(float));
     return value;
 }
 
 uint32_t RtypeClient::extractUint32(const std::vector<uint8_t>& data,
     size_t offset) const {
-    if (offset + 4 > data.size())
-        return 0;
+    if (offset + sizeof(uint32_t) > data.size())
+        throw TypeExtractError("Could not extract uint32_t at pos " + offset);
     uint32_t value;
-    std::memcpy(&value, data.data() + offset, 4);
+    std::memcpy(&value, data.data() + offset, sizeof(uint32_t));
     return value;
 }
 
 int64_t RtypeClient::extractInt64(const std::vector<uint8_t>& data,
     size_t offset) const {
-    if (offset + 8 > data.size())
-        return 0;
+    if (offset + sizeof(int64_t) > data.size())
+        throw TypeExtractError("Could not extract int64_t at pos " + offset);
     int64_t value;
-    std::memcpy(&value, data.data() + offset, 8);
+    std::memcpy(&value, data.data() + offset, sizeof(int64_t));
     return value;
 }
 
-void RtypeClient::handleEntityState(const std::vector<uint8_t>& data) {
-    if (data.size() < 4)
-        return;
+void RtypeClient::handleEntitiesStates(const std::vector<uint8_t>& data) {
+    size_t size = data.size();
+    size_t follow = 0;
 
-    uint32_t entity_count = extractUint32(data, 0);
-
-    size_t expected_size = 4 + (entity_count * 12);
-    if (data.size() < expected_size) {
-        std::cerr << "[Client] Invalid ENTITIES_STATES packet size: got "
-                  << data.size() << ", expected " << expected_size
-                  << ", entity_count=" << entity_count << "\n";
-        return;
-    }
-
-    size_t offset = 4;
-    for (uint32_t i = 0; i < entity_count; ++i) {
-        uint32_t server_id = extractUint32(data, offset);
-        float x = extractFloat(data, offset + 4);
-        float y = extractFloat(data, offset + 8);
-        offset += 12;
-
-        if (_my_server_entity_id.has_value()
-            && server_id == _my_server_entity_id.value()) {
-            continue;
-        }
+    while (follow < size) {
+        uint32_t server_e_id = extractUint32(data, follow);
+        follow += sizeof(uint32_t);
+        float x = extractFloat(data, follow);
+        follow += sizeof(float);
+        float y = extractFloat(data, follow);
+        follow += sizeof(float);
 
         auto& positions = getComponent<addon::physic::Position2>();
 
-        uint32_t client_id;
-        if (_serverToClientEntityMap.find(server_id)
+        uint32_t client_e_id;
+        if (_serverToClientEntityMap.find(server_e_id)
             == _serverToClientEntityMap.end()) {
-            client_id = next_entity_id++;
-            createEntity(client_id, "player", {0, 0});
-            _serverToClientEntityMap[server_id] = client_id;
-            std::cout << "[Client] Created OTHER player entity: server_id="
-                << server_id << " -> client_id=" << client_id
+            client_e_id = next_entity_id++;
+            createEntity(client_e_id, "player", {0, 0});
+            _serverToClientEntityMap[server_e_id] = client_e_id;
+            std::cout << "[Client] Created OTHER player entity: server_e_id="
+                << server_e_id << " -> client_e_id=" << client_e_id
                 << " at position (" << x << ", " << y << ")\n";
         } else {
-            client_id = _serverToClientEntityMap[server_id];
+            client_e_id = _serverToClientEntityMap[server_e_id];
         }
 
         // Update the entity's position
-        if (client_id < positions.size()
-            && positions[client_id].has_value()) {
-            positions[client_id].value().x = x;
-            positions[client_id].value().y = y;
-            std::cout << "[Client] Updated OTHER player entity server_id="
-                << server_id
-                << " (client_id=" << client_id << ") to position ("
+        if (client_e_id < positions.size()
+            && positions[client_e_id].has_value()) {
+            positions[client_e_id].value().x = x;
+            positions[client_e_id].value().y = y;
+            std::cout << "[Client] Updated OTHER player entity server_e_id="
+                << server_e_id
+                << " (client_e_id=" << client_e_id << ") to position ("
                 << x << ", " << y << ")\n";
         } else {
             std::cout
-                << "[Client] ERROR: Cannot update position for client_id="
-                << client_id
+                << "[Client] ERROR: Cannot update position for client_e_id="
+                << client_e_id
                 << " (positions.size()=" << positions.size() << ")\n";
         }
     }
@@ -375,19 +361,6 @@ void RtypeClient::handleEntityState(const std::vector<uint8_t>& data) {
 
 void RtypeClient::handlePlayersStates(const std::vector<uint8_t>& data) {
     size_t size = data.size();
-    if (size < 6)
-        return;
-
-    // uint32_t entity_count = extractUint32(data, 0);
-
-    // size_t expected_size = 4 + (entity_count * 12);
-    // if (data.size() < expected_size) {
-    //     std::cerr << "[Client] Invalid ENTITIES_STATES packet size: got "
-    //               << data.size() << ", expected " << expected_size
-    //               << ", entity_count=" << entity_count << "\n";
-    //     return;
-    // }
-
     size_t follow = 0;
 
     while (follow < size) {
@@ -409,49 +382,49 @@ void RtypeClient::handlePlayersStates(const std::vector<uint8_t>& data) {
         auto& positions = getComponent<addon::physic::Position2>();
         auto& healths = getComponent<addon::eSpec::Health>();
 
-        uint32_t client_id;
+        uint32_t client_entity_id;
         if (_serverToClientEntityMap.find(server_entity_id)
         == _serverToClientEntityMap.end()) {
-            client_id = next_entity_id++;
-            createEntity(client_id, "player", {0, 0});
-            _serverToClientEntityMap[server_entity_id] = client_id;
+            client_entity_id = next_entity_id++;
+            createEntity(client_entity_id, "player", {0, 0});
+            _serverToClientEntityMap[server_entity_id] = client_entity_id;
             std::cout <<
-            "[Client] Created OTHER player entity: server_entity_id="
-                << server_entity_id << " -> client_id=" << client_id
+            "[Client] Created OTHER player entity: server_entity_id=" <<
+                server_entity_id << " -> client_entity_id=" << client_entity_id
                 << " at position (" << x << ", " << y << ")\n";
         } else {
-            client_id = _serverToClientEntityMap[server_entity_id];
+            client_entity_id = _serverToClientEntityMap[server_entity_id];
         }
 
         // Update the entity's position
-        if (client_id < positions.size()
-            && positions[client_id].has_value()) {
-            positions[client_id].value().x = x;
-            positions[client_id].value().y = y;
+        if (client_entity_id < positions.size()
+            && positions[client_entity_id].has_value()) {
+            positions[client_entity_id].value().x = x;
+            positions[client_entity_id].value().y = y;
             std::cout <<
                 "[Client] Updated OTHER player entity server_entity_id="
                 << server_entity_id
-                << " (client_id=" << client_id << ") to position ("
-                << x << ", " << y << ")\n";
+                << " (client_entity_id=" << client_entity_id
+                << ") to position (" << x << ", " << y << ")\n";
         } else {
-            std::cout
-                << "[Client] ERROR: Cannot update position for client_id="
-                << client_id
+            std::cout <<
+                "[Client] ERROR: Cannot update position for client_entity_id="
+                << client_entity_id
                 << " (positions.size()=" << positions.size() << ")\n";
         }
 
-        if (client_id < healths.size()
-            && healths[client_id].has_value()) {
-            healths[client_id].value().amount = hp;
+        if (client_entity_id < healths.size()
+            && healths[client_entity_id].has_value()) {
+            healths[client_entity_id].value().amount = hp;
             std::cout <<
                 "[Client] Updated OTHER player entity server_entity_id="
                 << server_entity_id
-                << " (client_id=" << client_id << ") to position ("
-                << x << ", " << y << ")\n";
+                << " (client_entity_id=" << client_entity_id << ") to health ("
+                << hp << ")\n";
         } else {
-            std::cout
-                << "[Client] ERROR: Cannot update position for client_id="
-                << client_id
+            std::cout <<
+                "[Client] ERROR: Cannot update position for client_entity_id="
+                << client_entity_id
                 << " (healths.size()=" << healths.size() << ")\n";
         }
     }

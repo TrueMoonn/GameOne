@@ -18,6 +18,7 @@
 #include <event/events.hpp>
 #include <Game.hpp>
 #include <Protocol.hpp>
+// #include <GameException.hpp>
 
 class RtypeClient : public Game {
  public:
@@ -33,6 +34,17 @@ class RtypeClient : public Game {
     void setPing(std::chrono::_V2::steady_clock::time_point);
 
     #define FPS 60
+
+    class TypeExtractError : public std::exception {
+     public:
+        explicit TypeExtractError(std::string msg = "Type Extraction error")
+            : _msg(msg) {}
+        const char* what() const noexcept override {return _msg.c_str();}
+     private:
+        std::string _msg;
+    };
+
+    // TE_EXCEPTION("RTypeClient", TypeExtractError)  // ca marche po
 
  private:
     te::network::GameClient _client;
@@ -64,7 +76,7 @@ class RtypeClient : public Game {
     void handleServerFull(const std::vector<uint8_t>& data);
     void handlePing(const std::vector<uint8_t>& data);
     void handlePong(const std::vector<uint8_t>& data);
-    void handleEntityState(const std::vector<uint8_t>& data);
+    void handleEntitiesStates(const std::vector<uint8_t>& data);
     void handlePlayersStates(const std::vector<uint8_t>& data);
 
     void append(std::vector<uint8_t>& vec, uint32_t value) const;
