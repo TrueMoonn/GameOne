@@ -1,0 +1,34 @@
+[ENTITIES]
+    [ENTITIES.player]
+    drawable = true
+    player = true
+    movable = true
+    position2 = true
+        [ENTITIES.player.health]
+        amount = 5
+
+        [ENTITIES.player.damage]
+        amount = 2
+
+        [ENTITIES.player.team]
+        name = "ally"
+
+        [ENTITIES.player.sprite]
+        path = "./TrueEngine/tests/game_test/assets/projectile.png"
+        size = [10, 10]
+        scale = [30, 30]
+
+        [ENTITIES.player.velocity2]
+        x = 0.0
+        y = 0.0
+
+        [ENTITIES.player.hitbox]
+        left = 0.0
+        top = 0.0
+        width = 30.0
+        height = 30.0
+
+        [ENTITIES.player.animation]
+        frames = [
+            [[0, 0], 8, 0.1, true]
+        ]
