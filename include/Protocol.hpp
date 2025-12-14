@@ -19,5 +19,6 @@ enum ProtocolCode : uint8_t {
     PING = 6,
     PONG = 7,
     CLIENT_EVENT = 50,
-    ENTITY_STATE = 51  // Broadcast entities positions (float)
+    PLAYERS_STATES = 51,  // Broadcast players positions
+    ENTITIES_STATES = 54   // Broadcast entities positions (float)
 };
