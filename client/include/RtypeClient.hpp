@@ -32,7 +32,7 @@ class RtypeClient : public Game {
     std::chrono::_V2::steady_clock::time_point getPing();
     void setPing(std::chrono::_V2::steady_clock::time_point);
 
-    #define FPS 5
+    #define FPS 60
 
  private:
     te::network::GameClient _client;
@@ -44,6 +44,7 @@ class RtypeClient : public Game {
     std::optional<uint32_t> _my_server_entity_id;
     std::optional<uint32_t> _my_client_entity_id;
     std::unordered_map<uint32_t, uint32_t> _serverToClientEntityMap;
+    std::vector<int> _players;
 
     bool connect(const std::string& ip, uint16_t port);
     void disconnect();
@@ -64,8 +65,10 @@ class RtypeClient : public Game {
     void handlePing(const std::vector<uint8_t>& data);
     void handlePong(const std::vector<uint8_t>& data);
     void handleEntityState(const std::vector<uint8_t>& data);
+    void handlePlayersStates(const std::vector<uint8_t>& data);
 
     void append(std::vector<uint8_t>& vec, uint32_t value) const;
     uint32_t extractUint32(const std::vector<uint8_t>& data, size_t off) const;
+    int64_t extractInt64(const std::vector<uint8_t>& data, size_t off) const;
     float extractFloat(const std::vector<uint8_t>& data, size_t off) const;
 };
