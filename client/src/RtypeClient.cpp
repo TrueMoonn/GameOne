@@ -17,6 +17,7 @@
 #include <csignal>
 #include <vector>
 #include <physic/components/position.hpp>
+#include <entity_spec/components/health.hpp>
 #include <event/events.hpp>
 #include <RtypeClient.hpp>
 #include <GameTool.hpp>
@@ -90,7 +91,7 @@ void RtypeClient::run() {
                 std::chrono::duration_cast<std::chrono::milliseconds>(
                 now - lastUpdate).count();
 
-            if (elapsed >= 16) {  // ~60 FPS
+            if (elapsed >= (1000.0f / FPS)) {
                 update(deltaTime);
                 lastUpdate = now;
             }
@@ -195,7 +196,12 @@ void RtypeClient::registerProtocolHandlers() {
             handlePong(data);
         });
 
-    _client.registerPacketHandler(ENTITY_STATE,
+    _client.registerPacketHandler(PLAYERS_STATES,
+        [this](const std::vector<uint8_t>& data) {
+            handlePlayersStates(data);
+        });
+
+    _client.registerPacketHandler(ENTITIES_STATES,
         [this](const std::vector<uint8_t>& data) {
             handleEntityState(data);
         });
@@ -299,6 +305,15 @@ uint32_t RtypeClient::extractUint32(const std::vector<uint8_t>& data,
     return value;
 }
 
+int64_t RtypeClient::extractInt64(const std::vector<uint8_t>& data,
+    size_t offset) const {
+    if (offset + 8 > data.size())
+        return 0;
+    int64_t value;
+    std::memcpy(&value, data.data() + offset, 8);
+    return value;
+}
+
 void RtypeClient::handleEntityState(const std::vector<uint8_t>& data) {
     if (data.size() < 4)
         return;
@@ -307,7 +322,7 @@ void RtypeClient::handleEntityState(const std::vector<uint8_t>& data) {
 
     size_t expected_size = 4 + (entity_count * 12);
     if (data.size() < expected_size) {
-        std::cerr << "[Client] Invalid ENTITY_STATE packet size: got "
+        std::cerr << "[Client] Invalid ENTITIES_STATES packet size: got "
                   << data.size() << ", expected " << expected_size
                   << ", entity_count=" << entity_count << "\n";
         return;
@@ -354,6 +369,90 @@ void RtypeClient::handleEntityState(const std::vector<uint8_t>& data) {
                 << "[Client] ERROR: Cannot update position for client_id="
                 << client_id
                 << " (positions.size()=" << positions.size() << ")\n";
+        }
+    }
+}
+
+void RtypeClient::handlePlayersStates(const std::vector<uint8_t>& data) {
+    size_t size = data.size();
+    if (size < 6)
+        return;
+
+    // uint32_t entity_count = extractUint32(data, 0);
+
+    // size_t expected_size = 4 + (entity_count * 12);
+    // if (data.size() < expected_size) {
+    //     std::cerr << "[Client] Invalid ENTITIES_STATES packet size: got "
+    //               << data.size() << ", expected " << expected_size
+    //               << ", entity_count=" << entity_count << "\n";
+    //     return;
+    // }
+
+    size_t follow = 0;
+
+    while (follow < size) {
+        uint32_t server_entity_id = extractUint32(data, follow);
+        follow += sizeof(uint32_t);
+        float x = extractFloat(data, follow);
+        follow += sizeof(float);
+        float y = extractFloat(data, follow);
+        follow += sizeof(float);
+        int64_t hp = extractInt64(data, follow);
+        follow += sizeof(int64_t);
+
+        if (_my_server_entity_id.has_value()
+            && server_entity_id == _my_server_entity_id.value()) {
+            // recaler myplayer
+            continue;
+        }
+
+        auto& positions = getComponent<addon::physic::Position2>();
+        auto& healths = getComponent<addon::eSpec::Health>();
+
+        uint32_t client_id;
+        if (_serverToClientEntityMap.find(server_entity_id)
+        == _serverToClientEntityMap.end()) {
+            client_id = next_entity_id++;
+            createEntity(client_id, "player", {0, 0});
+            _serverToClientEntityMap[server_entity_id] = client_id;
+            std::cout <<
+            "[Client] Created OTHER player entity: server_entity_id="
+                << server_entity_id << " -> client_id=" << client_id
+                << " at position (" << x << ", " << y << ")\n";
+        } else {
+            client_id = _serverToClientEntityMap[server_entity_id];
+        }
+
+        // Update the entity's position
+        if (client_id < positions.size()
+            && positions[client_id].has_value()) {
+            positions[client_id].value().x = x;
+            positions[client_id].value().y = y;
+            std::cout <<
+                "[Client] Updated OTHER player entity server_entity_id="
+                << server_entity_id
+                << " (client_id=" << client_id << ") to position ("
+                << x << ", " << y << ")\n";
+        } else {
+            std::cout
+                << "[Client] ERROR: Cannot update position for client_id="
+                << client_id
+                << " (positions.size()=" << positions.size() << ")\n";
+        }
+
+        if (client_id < healths.size()
+            && healths[client_id].has_value()) {
+            healths[client_id].value().amount = hp;
+            std::cout <<
+                "[Client] Updated OTHER player entity server_entity_id="
+                << server_entity_id
+                << " (client_id=" << client_id << ") to position ("
+                << x << ", " << y << ")\n";
+        } else {
+            std::cout
+                << "[Client] ERROR: Cannot update position for client_id="
+                << client_id
+                << " (healths.size()=" << healths.size() << ")\n";
         }
     }
 }
