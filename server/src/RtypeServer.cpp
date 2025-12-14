@@ -135,7 +135,7 @@ void RtypeServer::update(float delta_time) {
     // Broadcast entity state every X ms
     _state_broadcast_timer += delta_time;
     if (_state_broadcast_timer >= 0.01f) {
-        sendEntityState();
+        sendPlayersStates();
         _state_broadcast_timer = 0.0f;
     }
 }

@@ -29,7 +29,7 @@ class RtypeServer : public Game {
     te::network::GameServer& getServer() { return _server; }
     size_t getClientCount() const { return _server.getClientCount(); }
 
-    #define FPS 5
+    #define FPS 60
 
  private:
     te::network::GameServer _server;
