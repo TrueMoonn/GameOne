@@ -55,6 +55,7 @@ Every code (1 ... 255) is on ONE BYTE only
 1   CONNECTED                               [NO DATA]   ->  Response to 1 from client
 2   DISCONNEXION                            [NO DATA]   ->  Server force disconnected client
 4   PACKET LOSS, LAST INSTRUCTION IGNORED   [NO DATA]   ->  Ask to send back last instruction
+5   NEXT_ENTITIES                           [5 + 4B int ]
 6   PING                                    [NO DATA]   ->  Will be responded by 7
 7   PONG                                    [NO DATA]   ->  Calculate delay, it means server sent PING before
 ```
@@ -67,12 +68,12 @@ Every code (1 ... 255) is on ONE BYTE only
 
 ### 30 ... 49 → lobby codes
 ```
-33  LOBBY CREATED   [33 + 6 bytes lobby_code]                   ->  Response to 32, send the created lobby code
-34  BAD LOBBY CODE  [NO DATA]                                   ->  Respond to 30 if invalid code given
+33  LOBBY CREATED   [33 + 6 bytes lobby_code]                   ->  Response to 32, send the created lobby code                                         {WIP}
+34  BAD LOBBY CODE  [NO DATA]                                   ->  Respond to 30 if invalid code given                                                 {WIP}
 36  GAME STARTING   [NO DATA]                                   ->  Broadcast to all lobby clients
-37  NOT ADMIN       [NO DATA]                                   ->  Send if client that sent 35 is not admin of the lobby
-38  PLAYERS LIST    [38 + X times (4B id + ':' + XB username)]  ->  Send all players names, separated by \n (10)
-49  GAME END        [NO DATA]                                   ->  Send when game finishes, send back all clients to lobby
+37  NOT ADMIN       [NO DATA]                                   ->  Send if client that sent 35 is not admin of the lobby                               {WIP}
+38  PLAYERS LIST    [38 + X times (4B id + ':' + XB username)]  ->  Send all players names, separated by \n (10)                                        {WIP}
+49  GAME END        [NO DATA]                                   ->  Send when game finishes, send back all clients to lobby                             {WIP}
 ```
 
 ### 50 ... 69 → in game codes
@@ -81,6 +82,7 @@ Every code (1 ... 255) is on ONE BYTE only
 ```
 51  PLAYERS STATES      [51 + X times (4B int id + 4B int x + 4B int y + 8B health)]    ->  Send all players positions + healths (not separated)
 52  PROJECTILES POS     [52 + X times (4B int id + 4B int x + 4B int y)]                ->  Send all projectiles positions (not separated)              {WIP}
+53  NEW WAVE            [53 + 4B int wave_id]                                           ->  Send code to create ennemy wave                             {WIP}
 54  ENNEMIES STATES     [54 + X times (4B int id + 4B int x + 4B int y + 8B health)]    ->  Send all ennemy positions + healths (not separated)         {WIP}
 56  GAME DURATION       [56 + 4B int duration]                                          ->  Send game duration since started                            {WIP}
 57  GAME LEVEL          [57 + 4B int level]                                             ->  Send current game level                                     {WIP}
