@@ -41,7 +41,13 @@ RtypeServer::RtypeServer(uint16_t port,
     , _state_broadcast_timer(0.0f) {
     registerProtocolHandlers();
 
+    addConfig("config/entities/server_player.toml");
+    addConfig("config/entities/boundaries.toml");
+
     createSystem("movement2");
+    createSystem("bound_hitbox");
+
+    generatePlayerHitbox();
     _server.setClientConnectCallback([this](const net::Address& client) {
         std::cout << "[Server] Network connection from: "
                   << client.getIP() << ":" << client.getPort() << "\n";
@@ -57,11 +63,14 @@ RtypeServer::RtypeServer(uint16_t port,
         auto it = _client_entities.find(addr_key);
         if (it != _client_entities.end()) {
             size_t entity_id = it->second;
-            std::cout << "[Server] Removing disconnected client's entity " << entity_id << "\n";
+            std::cout << "[Server] Removing disconnected client's entity "
+                << entity_id << "\n";
 
-            auto player_it = std::find(_players.begin(), _players.end(), entity_id);
+            auto player_it = std::find(_players.begin(), _players.end(),
+                entity_id);
             if (player_it != _players.end()) {
-                std::cout << "[Server] Removing player " << entity_id << " from players list\n";
+                std::cout << "[Server] Removing player " << entity_id <<
+                " from players list\n";
                 _players.erase(player_it);
             }
             removeEntity(entity_id);
@@ -140,6 +149,18 @@ bool RtypeServer::start() {
 
 void RtypeServer::stop() {
     _server.stop();
+}
+
+void RtypeServer::generatePlayerHitbox() {
+    size_t left_pannel_e = _next_entity_id++;
+    size_t top_pannel_e = _next_entity_id++;
+    size_t right_pannel_e = _next_entity_id++;
+    size_t bottom_pannel_e = _next_entity_id++;
+
+    createEntity(left_pannel_e, "boundary_left");
+    createEntity(top_pannel_e, "boundary_top");
+    createEntity(right_pannel_e, "boundary_right");
+    createEntity(bottom_pannel_e, "boundary_bottom");
 }
 
 void RtypeServer::update(float delta_time) {
@@ -325,8 +346,7 @@ std::string RtypeServer::addressToString(const net::Address& addr) const {
 }
 
 size_t RtypeServer::spawnEnnemyEntity(const net::Address& client) {
-    static size_t next_entity_id = 0;
-    size_t entity = next_entity_id++;
+    size_t entity = _next_entity_id++;
 
     createComponent("position2", entity);
     createComponent("velocity2", entity);
@@ -338,13 +358,9 @@ size_t RtypeServer::spawnEnnemyEntity(const net::Address& client) {
 }
 
 size_t RtypeServer::spawnPlayerEntity(const net::Address& client) {
-    static size_t next_entity_id = 0;
-    size_t entity = next_entity_id++;
+    size_t entity = _next_entity_id++;
 
-    createComponent("position2", entity);
-    createComponent("velocity2", entity);
-    createComponent("player", entity);
-    createComponent("health", entity);
+    createEntity(entity, "player");
 
     std::string addr_key = addressToString(client);
     _client_entities[addr_key] = entity;

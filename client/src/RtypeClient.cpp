@@ -34,7 +34,7 @@ RtypeClient::RtypeClient(const std::string& protocol, uint16_t port,
     createSystem("draw");
     createSystem("display");
 
-    addConfig("./config/entities/player.toml");
+    addConfig("./config/entities/client_player.toml");
 
     registerProtocolHandlers();
     _client.setConnectCallback([this]() {
