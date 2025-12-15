@@ -37,6 +37,7 @@ class RtypeServer : public Game {
     uint16_t _port;
     std::string _protocol;
     size_t _max_clients;
+    size_t _next_entity_id = 0;
 
     std::unordered_map<std::string, size_t> _client_entities;
     std::unordered_map<size_t, te::event::Events> _entity_events;
@@ -51,6 +52,7 @@ class RtypeServer : public Game {
     void runGame();   // Boucle de jeu principale (IN_GAME)
 
     void registerProtocolHandlers();
+    void generatePlayerHitbox();
 
     void sendConnectionAccepted(const net::Address& client, size_t entity_id);
     void sendErrorTooManyClients(const net::Address& client);

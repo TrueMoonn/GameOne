@@ -1,0 +1,39 @@
+[ENTITIES.boundaries_left]
+    [ENTITIES.boundaries_left.position2]
+        x = -10
+        y = -10
+    [ENTITIES.boundaries_left.hitbox]
+        left = 0
+        top = 0
+        width = 10
+        height = 1000
+
+[ENTITIES.boundaries_top]
+    [ENTITIES.boundaries_top.position2]
+        x = -10
+        y = -10
+    [ENTITIES.boundaries_top.hitbox]
+        left = 0
+        top = 0
+        width = 1000
+        height = 10
+
+[ENTITIES.boundaries_right]
+    [ENTITIES.boundaries_right.position2]
+        x = 200
+        y = -10
+    [ENTITIES.boundaries_right.hitbox]
+        left = 0
+        top = 0
+        width = 10
+        height = 1000
+
+[ENTITIES.boundaries_bottom]
+    [ENTITIES.boundaries_bottom.position2]
+        x = -10
+        y = 200
+    [ENTITIES.boundaries_bottom.hitbox]
+        left = 0
+        top = 0
+        width = 1000
+        height = 10
