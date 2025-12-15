@@ -17,3 +17,11 @@ Game::Game(const std::string& dir) {
 Game::~Game() {
     clearPlugins();
 }
+
+Game::GAME_STATE Game::getGameState() const {
+    return _game_state;
+}
+
+void Game::setGameState(Game::GAME_STATE game_state) {
+    _game_state = game_state;
+}
