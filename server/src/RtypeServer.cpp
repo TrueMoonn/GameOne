@@ -14,6 +14,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <utility>
 #include <sstream>
 #include <csignal>
 #include <atomic>
@@ -110,7 +111,8 @@ void RtypeServer::run() {
         }
 
         std::cout << "[Server] Server started successfully!" << std::endl;
-        std::cout << "[Server] Waiting for players to connect and ready up..." << std::endl;
+        std::cout << "[Server] Waiting for players to connect and ready up..."
+            << std::endl;
         std::cout << "[Server] Press Ctrl+C to stop" << std::endl;
 
         while (g_running) {
@@ -302,7 +304,8 @@ void RtypeServer::handleDisconnection(const std::vector<uint8_t>& data,
                 return p.first == entity_id;
             });
         if (player_it != _players.end()) {
-            std::cout << "[Server] Removing player " << entity_id << " from players list\n";
+            std::cout << "[Server] Removing player "
+                << entity_id << " from players list\n";
             _players.erase(player_it);
         }
         removeEntity(entity_id);
@@ -501,8 +504,9 @@ void RtypeServer::handleWantStart(const std::vector<uint8_t>& data,
     if (player_it != _players.end()) {
         if (player_it->second == WAIT_GAME) {
             player_it->second = READY_TO_START;
-            std::cout << "[Server] Player " << entity_id << " is ready to start ("
-                      << sender.getIP() << ":" << sender.getPort() << ")\n";
+            std::cout << "[Server] Player " << entity_id
+                << " is ready to start ("
+                << sender.getIP() << ":" << sender.getPort() << ")\n";
 
             bool all_ready = std::all_of(_players.begin(), _players.end(),
                 [](const std::pair<size_t, PLAYER_STATE>& p) {
@@ -520,7 +524,8 @@ void RtypeServer::handleWantStart(const std::vector<uint8_t>& data,
                 setGameState(IN_GAME);
                 sendGameStart();
             } else {
-                size_t ready_count = std::count_if(_players.begin(), _players.end(),
+                size_t ready_count = std::count_if(_players.begin(),
+                    _players.end(),
                     [](const std::pair<size_t, PLAYER_STATE>& p) {
                         return p.second == READY_TO_START;
                     });

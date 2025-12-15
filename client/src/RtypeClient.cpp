@@ -16,6 +16,7 @@
 #include <string>
 #include <csignal>
 #include <vector>
+#include <unordered_map>
 #include <physic/components/position.hpp>
 #include <entity_spec/components/health.hpp>
 #include <event/events.hpp>
@@ -137,11 +138,13 @@ void RtypeClient::waitGame() {
 
         // TEMPORAIRE : Appuyer sur P pour envoyer WANT_START (test)
         if (events.keys.keys[te::event::P]) {
-            std::cout << "[Client] P pressed - Sending WANT_START (test mode)\n";
+            std::cout
+                << "[Client] P pressed - Sending WANT_START (test mode)\n";
             sendWantStart();
         }
 
-        // TODO(ETHAN): Ajouter ici la logique pour afficher et gérer le bouton "Ready"
+        // TODO(ETHAN):
+        // Ajouter ici la logique pour afficher et gérer le bouton "Ready"
         // et appeler sendWantStart quand il clique sur le bouton
 
         runSystems();
@@ -268,7 +271,7 @@ void RtypeClient::registerProtocolHandlers() {
 
     _client.registerPacketHandler(GAME_START,
         [this](const std::vector<uint8_t>& data) {
-            handleGameStart(data);
+            handleGameStarted(data);
         });
 
     _client.registerPacketHandler(GAME_ENDED,
@@ -520,7 +523,8 @@ void RtypeClient::handlePlayersStates(const std::vector<uint8_t>& data) {
     }
 
     std::vector<uint32_t> entities_to_remove;
-    for (const auto& [server_entity_id, client_entity_id] : _serverToClientEntityMap) {
+    for (const auto& [server_entity_id, client_entity_id]
+        : _serverToClientEntityMap) {
         if (_my_server_entity_id.has_value()
             && server_entity_id == _my_server_entity_id.value()) {
             continue;
@@ -533,15 +537,16 @@ void RtypeClient::handlePlayersStates(const std::vector<uint8_t>& data) {
 
     for (uint32_t server_entity_id : entities_to_remove) {
         uint32_t client_entity_id = _serverToClientEntityMap[server_entity_id];
-        std::cout << "[Client] Player disappeared from server state: server_entity_id="
-                  << server_entity_id << " -> client_entity_id=" << client_entity_id
-                  << " - Removing entity\n";
+        std::cout
+        << "[Client] Player disappeared from server state: server_entity_id="
+        << server_entity_id << " -> client_entity_id=" << client_entity_id
+        << " - Removing entity\n";
         removeEntity(client_entity_id);
         _serverToClientEntityMap.erase(server_entity_id);
     }
 }
 
-void RtypeClient::handleGameStart(const std::vector<uint8_t>& data) {
+void RtypeClient::handleGameStarted(const std::vector<uint8_t>& data) {
     Game::setGameState(Game::IN_GAME);
     if (_my_client_entity_id.has_value())
         createEntity(_my_client_entity_id.value(), "player", {0, 0});

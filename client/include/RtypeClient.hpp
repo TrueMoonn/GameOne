@@ -82,7 +82,7 @@ class RtypeClient : public Game {
     void handlePong(const std::vector<uint8_t>& data);
     void handleEntitiesStates(const std::vector<uint8_t>& data);
     void handlePlayersStates(const std::vector<uint8_t>& data);
-    void handleGameStart(const std::vector<uint8_t>& data);
+    void handleGameStarted(const std::vector<uint8_t>& data);
     void handleGameEnded(const std::vector<uint8_t>& data);
 
     void append(std::vector<uint8_t>& vec, uint32_t value) const;
