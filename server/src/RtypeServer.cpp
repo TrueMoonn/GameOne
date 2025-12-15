@@ -155,9 +155,11 @@ void RtypeServer::waitGame() {
 void RtypeServer::runGame() {
     const float deltaTime = 1.0f / FPS;
     auto lastUpdate = std::chrono::steady_clock::now();
+    auto lastEnnemyWave = std::chrono::steady_clock::now();
 
     std::cout << "[Server] Game started! Running game loop..." << std::endl;
 
+    spawnEnnemyEntity(1);
     while (g_running && getGameState() == IN_GAME) {
         auto now = std::chrono::steady_clock::now();
         auto elapsed =
@@ -167,6 +169,15 @@ void RtypeServer::runGame() {
         if (elapsed >= (1000.0f / FPS)) {
             update(deltaTime);
             lastUpdate = now;
+        }
+
+        elapsed =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - lastEnnemyWave).count();
+
+        if (elapsed >= (1000.0f * TIME_ENNEMY_SPAWN)) {
+            spawnEnnemyEntity(2);
+            lastEnnemyWave = now;
         }
 
         // Traiter les événements des joueurs et exécuter les systèmes de jeu
@@ -186,10 +197,10 @@ void RtypeServer::stop() {
 }
 
 void RtypeServer::generatePlayerHitbox() {
-    size_t left_pannel_e = _next_entity_id++;
-    size_t top_pannel_e = _next_entity_id++;
-    size_t right_pannel_e = _next_entity_id++;
-    size_t bottom_pannel_e = _next_entity_id++;
+    size_t left_pannel_e = _nextMapE++;
+    size_t top_pannel_e = _nextMapE++;
+    size_t right_pannel_e = _nextMapE++;
+    size_t bottom_pannel_e = _nextMapE++;
 
     createEntity(left_pannel_e, "boundary_left");
     createEntity(top_pannel_e, "boundary_top");
@@ -390,20 +401,12 @@ std::string RtypeServer::addressToString(const net::Address& addr) const {
     return oss.str();
 }
 
-size_t RtypeServer::spawnEnnemyEntity(const net::Address& client) {
-    size_t entity = _next_entity_id++;
-
-    createComponent("position2", entity);
-    createComponent("velocity2", entity);
-    createComponent("health", entity);
-
-    std::string addr_key = addressToString(client);
-    _client_entities[addr_key] = entity;
-    return entity;
+void RtypeServer::spawnEnnemyEntity(size_t waveNb) {
+    createMobWave(waveNb);
 }
 
 size_t RtypeServer::spawnPlayerEntity(const net::Address& client) {
-    size_t entity = _next_entity_id++;
+    size_t entity = _nextPlayerE++;
 
     createEntity(entity, "player");
 
