@@ -3,12 +3,13 @@
 ** GameOne
 ** File description:
 ** Game.cpp
-** Copyright [2025] <DeepestDungeonGroup>
 */
 
 #include <string>
+#include <ECS/Entity.hpp>
 
 #include <Game.hpp>
+#include "waves.hpp"
 
 Game::Game(const std::string& dir) {
     loadPlugins(dir);
@@ -24,4 +25,11 @@ Game::GAME_STATE Game::getGameState() const {
 
 void Game::setGameState(Game::GAME_STATE game_state) {
     _game_state = game_state;
+void Game::createMobWave(std::size_t index) {
+    ECS::Entity e = BEGIN_WAVE_ENTITY;
+    if (index < NB_WAVES) {
+        for (auto& entity : WAVES[index]) {
+            createEntity(e++, entity.name, entity.pos);
+        }
+    }
 }

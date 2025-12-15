@@ -3,7 +3,6 @@
 ** GameOne
 ** File description:
 ** Game.hpp
-** Copyright [2025] <DeepestDungeonGroup>
 */
 
 #pragma once
@@ -28,4 +27,6 @@ class Game : public te::GameTool {
 
  private:
     GAME_STATE _game_state = GAME_WAITING;
+ protected:
+    void createMobWave(std::size_t type);
 };
