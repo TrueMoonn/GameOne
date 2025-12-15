@@ -3,7 +3,6 @@
 ** GameOne
 ** File description:
 ** Game.hpp
-** Copyright [2025] <DeepestDungeonGroup>
 */
 
 #pragma once
@@ -17,5 +16,6 @@ class Game : public te::GameTool {
     explicit Game(const std::string& dir);
     ~Game();
 
- private:
+ protected:
+    void createMobWave(std::size_t type);
 };
