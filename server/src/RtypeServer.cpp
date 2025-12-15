@@ -383,6 +383,13 @@ void RtypeServer::append(std::vector<uint8_t>& vec, uint32_t value) const {
     vec.insert(vec.end(), bytes.begin(), bytes.end());
 }
 
+void RtypeServer::append(std::vector<uint8_t>& vec, size_t value) const {
+    std::array<uint8_t, sizeof(size_t)> bytes;
+    std::memcpy(bytes.data(), &value, sizeof(size_t));
+    vec.insert(vec.end(), bytes.begin(), bytes.end());
+}
+
+
 void RtypeServer::append(std::vector<uint8_t>& vec, int64_t value) const {
     std::array<uint8_t, sizeof(int64_t)> bytes;
     std::memcpy(bytes.data(), &value, sizeof(int64_t));
@@ -425,7 +432,7 @@ void RtypeServer::sendEnnemySpawn(size_t waveNb) {
 
     packet.push_back(NEW_WAVE);
 
-    append(packet, static_cast<int64_t>(waveNb));
+    append(packet, waveNb);
 
     std::cout << "Sending spawn wave : WAVE " << waveNb << "\n";
     _server.broadcastToAll(packet);

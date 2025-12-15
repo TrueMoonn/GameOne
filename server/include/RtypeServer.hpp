@@ -90,6 +90,7 @@ class RtypeServer : public Game {
 
     std::string addressToString(const net::Address& addr) const;
     void append(std::vector<uint8_t>& vec, uint32_t value) const;
+    void append(std::vector<uint8_t>& vec, size_t value) const;
     void append(std::vector<uint8_t>& vec, int64_t value) const;
     void append(std::vector<uint8_t>& vec, float value) const;
 };

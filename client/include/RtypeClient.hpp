@@ -94,6 +94,7 @@ class RtypeClient : public Game {
 
     void append(std::vector<uint8_t>& vec, uint32_t value) const;
     uint32_t extractUint32(const std::vector<uint8_t>& data, size_t off) const;
+    size_t extractSizeT(const std::vector<uint8_t>& data, size_t off) const;
     int64_t extractInt64(const std::vector<uint8_t>& data, size_t off) const;
     float extractFloat(const std::vector<uint8_t>& data, size_t off) const;
 };

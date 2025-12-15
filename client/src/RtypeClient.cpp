@@ -422,6 +422,15 @@ uint32_t RtypeClient::extractUint32(const std::vector<uint8_t>& data,
     return value;
 }
 
+size_t RtypeClient::extractSizeT(const std::vector<uint8_t>& data,
+    size_t offset) const {
+    if (offset + sizeof(size_t) > data.size())
+        throw TypeExtractError("Could not extract size_t at pos " + offset);
+    size_t value;
+    std::memcpy(&value, data.data() + offset, sizeof(size_t));
+    return value;
+}
+
 int64_t RtypeClient::extractInt64(const std::vector<uint8_t>& data,
     size_t offset) const {
     if (offset + sizeof(int64_t) > data.size())
@@ -585,7 +594,7 @@ void RtypeClient::handleGameEnded(const std::vector<uint8_t>& data) {
 }
 
 void RtypeClient::handleWaveSpawned(const std::vector<uint8_t>& data) {
-    size_t waveNb = extractInt64(data, 0);
+    size_t waveNb = extractSizeT(data, 0);
 
     createMobWave(waveNb);
 }
