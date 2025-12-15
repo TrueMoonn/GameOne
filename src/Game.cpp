@@ -6,7 +6,9 @@
 */
 
 #include <string>
+#include <clock.hpp>
 #include <ECS/Entity.hpp>
+#include <physic/components/position.hpp>
 
 #include <Game.hpp>
 #include "waves.hpp"
@@ -34,4 +36,14 @@ void Game::createMobWave(std::size_t index) {
             createEntity(e++, entity.name, entity.pos);
         }
     }
+}
+
+void Game::createProjectile(ECS::Entity e) {
+    // static te::Timestamp delay(0.2f);
+
+    // const auto &position = getComponent<addon::physic::Position2>();
+    // if (position[e].has_value()) {
+    //     createEntity(entity_proj++, "shoot",
+    //         {position[e].value().x + 10, position[e].value().y});
+    // }
 }
