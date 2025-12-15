@@ -60,6 +60,12 @@ class RtypeClient : public Game {
     std::unordered_map<uint32_t, uint32_t> _serverToClientEntityMap;
     std::vector<int> _players;
 
+    // next entities
+    size_t _nextPlayer = PLAYER_BEGIN;
+    size_t _nextEnnemy = ENEMIES_BEGIN;
+    size_t _nextProjectile = PROJECTILES_BEGIN;
+
+
     bool connect(const std::string& ip, uint16_t port);
     void disconnect();
     void update(float delta_time);
@@ -85,9 +91,11 @@ class RtypeClient : public Game {
     void handlePlayersStates(const std::vector<uint8_t>& data);
     void handleGameStarted(const std::vector<uint8_t>& data);
     void handleGameEnded(const std::vector<uint8_t>& data);
+    void handleWaveSpawned(const std::vector<uint8_t>& data);
 
     void append(std::vector<uint8_t>& vec, uint32_t value) const;
     uint32_t extractUint32(const std::vector<uint8_t>& data, size_t off) const;
+    size_t extractSizeT(const std::vector<uint8_t>& data, size_t off) const;
     int64_t extractInt64(const std::vector<uint8_t>& data, size_t off) const;
     float extractFloat(const std::vector<uint8_t>& data, size_t off) const;
 };

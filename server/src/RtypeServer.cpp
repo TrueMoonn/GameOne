@@ -43,7 +43,7 @@ RtypeServer::RtypeServer(uint16_t port,
     , _state_broadcast_timer(0.0f) {
     registerProtocolHandlers();
 
-    addConfig("config/entities/server_player.toml");
+    addConfig("config/entities/player.toml");
     addConfig("config/entities/boundaries.toml");
 
     createSystem("movement2");
@@ -156,9 +156,11 @@ void RtypeServer::waitGame() {
 void RtypeServer::runGame() {
     const float deltaTime = 1.0f / FPS;
     auto lastUpdate = std::chrono::steady_clock::now();
+    auto lastEnnemyWave = std::chrono::steady_clock::now();
 
     std::cout << "[Server] Game started! Running game loop..." << std::endl;
 
+    spawnEnnemyEntity(1);
     while (g_running && getGameState() == IN_GAME) {
         auto now = std::chrono::steady_clock::now();
         auto elapsed =
@@ -168,6 +170,15 @@ void RtypeServer::runGame() {
         if (elapsed >= (1000.0f / FPS)) {
             update(deltaTime);
             lastUpdate = now;
+        }
+
+        elapsed =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - lastEnnemyWave).count();
+
+        if (elapsed >= (1000.0f * TIME_ENNEMY_SPAWN)) {
+            spawnEnnemyEntity(0);
+            lastEnnemyWave = now;
         }
 
         // Traiter les événements des joueurs et exécuter les systèmes de jeu
@@ -187,10 +198,10 @@ void RtypeServer::stop() {
 }
 
 void RtypeServer::generatePlayerHitbox() {
-    size_t left_pannel_e = _next_entity_id++;
-    size_t top_pannel_e = _next_entity_id++;
-    size_t right_pannel_e = _next_entity_id++;
-    size_t bottom_pannel_e = _next_entity_id++;
+    size_t left_pannel_e = _nextMapE++;
+    size_t top_pannel_e = _nextMapE++;
+    size_t right_pannel_e = _nextMapE++;
+    size_t bottom_pannel_e = _nextMapE++;
 
     createEntity(left_pannel_e, "boundary_left");
     createEntity(top_pannel_e, "boundary_top");
@@ -377,6 +388,13 @@ void RtypeServer::append(std::vector<uint8_t>& vec, uint32_t value) const {
     vec.insert(vec.end(), bytes.begin(), bytes.end());
 }
 
+void RtypeServer::append(std::vector<uint8_t>& vec, size_t value) const {
+    std::array<uint8_t, sizeof(size_t)> bytes;
+    std::memcpy(bytes.data(), &value, sizeof(size_t));
+    vec.insert(vec.end(), bytes.begin(), bytes.end());
+}
+
+
 void RtypeServer::append(std::vector<uint8_t>& vec, int64_t value) const {
     std::array<uint8_t, sizeof(int64_t)> bytes;
     std::memcpy(bytes.data(), &value, sizeof(int64_t));
@@ -395,20 +413,13 @@ std::string RtypeServer::addressToString(const net::Address& addr) const {
     return oss.str();
 }
 
-size_t RtypeServer::spawnEnnemyEntity(const net::Address& client) {
-    size_t entity = _next_entity_id++;
-
-    createComponent("position2", entity);
-    createComponent("velocity2", entity);
-    createComponent("health", entity);
-
-    std::string addr_key = addressToString(client);
-    _client_entities[addr_key] = entity;
-    return entity;
+void RtypeServer::spawnEnnemyEntity(size_t waveNb) {
+    createMobWave(waveNb);
+    sendEnnemySpawn(waveNb);
 }
 
 size_t RtypeServer::spawnPlayerEntity(const net::Address& client) {
-    size_t entity = _next_entity_id++;
+    size_t entity = _nextPlayerE++;
 
     createEntity(entity, "player");
 
@@ -416,6 +427,20 @@ size_t RtypeServer::spawnPlayerEntity(const net::Address& client) {
     _client_entities[addr_key] = entity;
     _players.push_back({entity, WAIT_GAME});  // Le joueur est en attente
     return entity;
+}
+
+void RtypeServer::sendEnnemySpawn(size_t waveNb) {
+    if (_server.getClientCount() == 0)
+        return;
+
+    std::vector<uint8_t> packet;
+
+    packet.push_back(NEW_WAVE);
+
+    append(packet, waveNb);
+
+    std::cout << "Sending spawn wave : WAVE " << waveNb << "\n";
+    _server.broadcastToAll(packet);
 }
 
 void RtypeServer::sendEntityState() {

@@ -29,7 +29,8 @@ enum ProtocolCode : uint8_t {
     GAME_START = 36,  // server send
     GAME_ENDED = 49,  // Server send
     CLIENT_EVENT = 50,
-    PLAYERS_STATES = 51,  // Broadcast players positions
+    PLAYERS_STATES = 51,    // Broadcast players positions
+    NEW_WAVE = 53,          // Broadcast ennemies waves spawns
     ENTITIES_STATES = 54,   // Broadcast entities positions (float)
-    PLAYER_SHOT = 100
+    PLAYER_SHOT = 55
 };

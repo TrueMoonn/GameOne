@@ -39,8 +39,7 @@ RtypeClient::RtypeClient(const std::string& protocol, uint16_t port,
     createSystem("draw");
     createSystem("parallax_sys");
     createSystem("display");
-
-    addConfig("./config/entities/client_player.toml");
+    addConfig("./client/assets/enemies/basic/player.toml");
 
     // BACKGROUND
     addConfig("./client/assets/background/config.toml");
@@ -317,6 +316,11 @@ void RtypeClient::registerProtocolHandlers() {
         [this](const std::vector<uint8_t>& data) {
             handleGameEnded(data);
         });
+
+    _client.registerPacketHandler(NEW_WAVE,
+        [this](const std::vector<uint8_t>& data) {
+            handleWaveSpawned(data);
+        });
 }
 
 void RtypeClient::sendConnectionRequest() {
@@ -430,6 +434,15 @@ uint32_t RtypeClient::extractUint32(const std::vector<uint8_t>& data,
         throw TypeExtractError("Could not extract uint32_t at pos " + offset);
     uint32_t value;
     std::memcpy(&value, data.data() + offset, sizeof(uint32_t));
+    return value;
+}
+
+size_t RtypeClient::extractSizeT(const std::vector<uint8_t>& data,
+    size_t offset) const {
+    if (offset + sizeof(size_t) > data.size())
+        throw TypeExtractError("Could not extract size_t at pos " + offset);
+    size_t value;
+    std::memcpy(&value, data.data() + offset, sizeof(size_t));
     return value;
 }
 
@@ -593,4 +606,10 @@ void RtypeClient::handleGameStarted(const std::vector<uint8_t>& data) {
 
 void RtypeClient::handleGameEnded(const std::vector<uint8_t>& data) {
     Game::setGameState(Game::GAME_ENDED);
+}
+
+void RtypeClient::handleWaveSpawned(const std::vector<uint8_t>& data) {
+    size_t waveNb = extractSizeT(data, 0);
+
+    createMobWave(waveNb);
 }
