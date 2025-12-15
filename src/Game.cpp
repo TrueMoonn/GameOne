@@ -19,6 +19,14 @@ Game::~Game() {
     clearPlugins();
 }
 
+Game::GAME_STATE Game::getGameState() const {
+    return _game_state;
+}
+
+void Game::setGameState(Game::GAME_STATE game_state) {
+    _game_state = game_state;
+}
+
 void Game::createMobWave(std::size_t index) {
     ECS::Entity e = BEGIN_WAVE_ENTITY;
     if (index < NB_WAVES) {
