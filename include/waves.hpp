@@ -7,9 +7,9 @@
 
 #pragma once
 
-    #include <maths/Vector.hpp>
     #include <string>
     #include <vector>
+    #include <maths/Vector.hpp>
 
     #define BEGIN_WAVE_ENTITY 20
 
