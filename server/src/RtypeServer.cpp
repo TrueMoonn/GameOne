@@ -59,7 +59,10 @@ RtypeServer::RtypeServer(uint16_t port,
             size_t entity_id = it->second;
             std::cout << "[Server] Removing disconnected client's entity " << entity_id << "\n";
 
-            auto player_it = std::find(_players.begin(), _players.end(), entity_id);
+            auto player_it = std::find_if(_players.begin(), _players.end(),
+                [entity_id](const std::pair<size_t, PLAYER_STATE>& p) {
+                    return p.first == entity_id;
+                });
             if (player_it != _players.end()) {
                 std::cout << "[Server] Removing player " << entity_id << " from players list\n";
                 _players.erase(player_it);
@@ -95,34 +98,22 @@ void RtypeServer::run() {
         if (!start()) {
             std::cerr << "[Server] Failed to start server on port "
                 << _port << std::endl;
-            return;  // should throw
+            return;
         }
 
         std::cout << "[Server] Server started successfully!" << std::endl;
+        std::cout << "[Server] Waiting for players to connect and ready up..." << std::endl;
         std::cout << "[Server] Press Ctrl+C to stop" << std::endl;
 
-        // Main server loop
-        const float deltaTime = 1.0f / 60.0f;  // TODO(Pierre): same Client
-        auto lastUpdate = std::chrono::steady_clock::now();
-        auto lastEvent = std::chrono::steady_clock::now();
-
         while (g_running) {
-            auto now = std::chrono::steady_clock::now();
-            auto elapsed =
-                std::chrono::duration_cast<std::chrono::milliseconds>(
-                now - lastUpdate).count();
-
-            if (elapsed >= (1000.0f / FPS)) {
-                update(deltaTime);
-                lastUpdate = now;
+            if (getGameState() == GAME_WAITING) {
+                waitGame();
+            } else if (getGameState() == IN_GAME) {
+                runGame();
+            } else if (getGameState() == GAME_ENDED) {
+                std::cout << "[Server] Game ended!" << std::endl;
+                break;
             }
-
-            elapsed =
-                std::chrono::duration_cast<std::chrono::milliseconds>(
-                now - lastEvent).count();
-
-            processEntitiesEvents();
-            runSystems();
         }
 
         std::cout << "[Server] Stopping server..." << std::endl;
@@ -130,8 +121,50 @@ void RtypeServer::run() {
         std::cout << "[Server] Server stopped. Goodbye!" << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "[Server] Fatal error: " << e.what() << std::endl;
-        return;  // Should throw
+        return;
     }
+}
+
+void RtypeServer::waitGame() {
+    const float deltaTime = 1.0f / FPS;
+    auto lastUpdate = std::chrono::steady_clock::now();
+
+    while (g_running && getGameState() == GAME_WAITING) {
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - lastUpdate).count();
+
+        if (elapsed >= (1000.0f / FPS)) {
+            update(deltaTime);
+            lastUpdate = now;
+        }
+    }
+}
+
+void RtypeServer::runGame() {
+    const float deltaTime = 1.0f / FPS;
+    auto lastUpdate = std::chrono::steady_clock::now();
+
+    std::cout << "[Server] Game started! Running game loop..." << std::endl;
+
+    while (g_running && getGameState() == IN_GAME) {
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - lastUpdate).count();
+
+        if (elapsed >= (1000.0f / FPS)) {
+            update(deltaTime);
+            lastUpdate = now;
+        }
+
+        // Traiter les événements des joueurs et exécuter les systèmes de jeu
+        processEntitiesEvents();
+        runSystems();
+    }
+
+    std::cout << "[Server] Game loop ended." << std::endl;
 }
 
 bool RtypeServer::start() {
@@ -145,6 +178,8 @@ void RtypeServer::stop() {
 void RtypeServer::update(float delta_time) {
     _server.update(delta_time);
     // Broadcast entity state every X ms
+    if (getGameState() != IN_GAME)
+        return;
     _state_broadcast_timer += delta_time;
     if (_state_broadcast_timer >= 0.01f) {
         sendPlayersStates();
@@ -175,7 +210,12 @@ void RtypeServer::registerProtocolHandlers() {
 
     _server.registerPacketHandler(CLIENT_EVENT,
         [this](const std::vector<uint8_t>& data, const net::Address& sender) {
-        handleUserEvent(data, sender);
+            handleUserEvent(data, sender);
+        });
+
+    _server.registerPacketHandler(WANT_START,
+        [this](const std::vector<uint8_t>& data, const net::Address& sender) {
+            handleWantStart(data, sender);
         });
 }
 
@@ -237,7 +277,10 @@ void RtypeServer::handleDisconnection(const std::vector<uint8_t>& data,
         size_t entity_id = it->second;
         std::cout << "[Server] Removing entity " << entity_id << "\n";
 
-        auto player_it = std::find(_players.begin(), _players.end(), entity_id);
+        auto player_it = std::find_if(_players.begin(), _players.end(),
+            [entity_id](const std::pair<size_t, PLAYER_STATE>& p) {
+                return p.first == entity_id;
+            });
         if (player_it != _players.end()) {
             std::cout << "[Server] Removing player " << entity_id << " from players list\n";
             _players.erase(player_it);
@@ -348,7 +391,7 @@ size_t RtypeServer::spawnPlayerEntity(const net::Address& client) {
 
     std::string addr_key = addressToString(client);
     _client_entities[addr_key] = entity;
-    _players.push_back(entity);
+    _players.push_back({entity, WAIT_GAME});  // Le joueur est en attente
     return entity;
 }
 
@@ -362,7 +405,10 @@ void RtypeServer::sendEntityState() {
     auto& positions = getComponent<addon::physic::Position2>();
 
     for (auto &&[entity, pos] : ECS::IndexedZipper(positions)) {
-        auto isPlayer = find(_players.begin(), _players.end(), entity);
+        auto isPlayer = std::find_if(_players.begin(), _players.end(),
+            [entity](const std::pair<size_t, PLAYER_STATE>& p) {
+                return p.first == entity;
+            });
         if (isPlayer != _players.end())
             continue;
 
@@ -387,7 +433,10 @@ void RtypeServer::sendPlayersStates() {
     auto& healths = getComponent<addon::eSpec::Health>();
 
     for (auto &&[entity, pos, hp] : ECS::IndexedZipper(positions, healths)) {
-        auto isPlayer = find(_players.begin(), _players.end(), entity);
+        auto isPlayer = std::find_if(_players.begin(), _players.end(),
+            [entity](const std::pair<size_t, PLAYER_STATE>& p) {
+                return p.first == entity;
+            });
         if (isPlayer == _players.end())
             continue;
 
@@ -402,3 +451,71 @@ void RtypeServer::sendPlayersStates() {
 
     _server.broadcastToAll(packet);
 }
+
+void RtypeServer::sendGameStart() {
+    std::vector<uint8_t> packet;
+    packet.push_back(GAME_START);
+
+    std::cout << "[Server] Broadcasting GAME_START to all clients\n";
+    _server.broadcastToAll(packet);
+}
+
+void RtypeServer::handleWantStart(const std::vector<uint8_t>& data,
+    const net::Address& sender) {
+    if (getGameState() != GAME_WAITING) {
+        std::cout << "[Server] Ignoring WANT_START from " << sender.getIP()
+                  << ":" << sender.getPort() << " - game already started\n";
+        return;
+    }
+
+    std::string addr_key = addressToString(sender);
+    auto it = _client_entities.find(addr_key);
+    if (it == _client_entities.end()) {
+        std::cerr << "[Server] Received WANT_START from unknown client: "
+                  << sender.getIP() << ":" << sender.getPort() << "\n";
+        return;
+    }
+
+    size_t entity_id = it->second;
+
+    auto player_it = std::find_if(_players.begin(), _players.end(),
+        [entity_id](const std::pair<size_t, PLAYER_STATE>& p) {
+            return p.first == entity_id;
+        });
+
+    if (player_it != _players.end()) {
+        if (player_it->second == WAIT_GAME) {
+            player_it->second = READY_TO_START;
+            std::cout << "[Server] Player " << entity_id << " is ready to start ("
+                      << sender.getIP() << ":" << sender.getPort() << ")\n";
+
+            bool all_ready = std::all_of(_players.begin(), _players.end(),
+                [](const std::pair<size_t, PLAYER_STATE>& p) {
+                    return p.second == READY_TO_START;
+                });
+
+            if (all_ready && !_players.empty()) {
+                std::cout << "[Server] All " << _players.size()
+                          << " players are ready! Starting game...\n";
+
+                for (auto& player : _players) {
+                    player.second = PLAYER_ALIVE;
+                }
+
+                setGameState(IN_GAME);
+                sendGameStart();
+            } else {
+                size_t ready_count = std::count_if(_players.begin(), _players.end(),
+                    [](const std::pair<size_t, PLAYER_STATE>& p) {
+                        return p.second == READY_TO_START;
+                    });
+                std::cout << "[Server] Waiting for players... (" << ready_count
+                          << "/" << _players.size() << " ready)\n";
+            }
+        } else {
+            std::cout << "[Server] Player " << entity_id
+                      << " already marked as ready or in different state\n";
+        }
+    }
+}
+

@@ -29,6 +29,7 @@ class RtypeClient : public Game {
     void run();
 
     void sendPing();
+    void sendWantStart();  // Envoyer WANT_START au serveur
 
     std::chrono::_V2::steady_clock::time_point getPing();
     void setPing(std::chrono::_V2::steady_clock::time_point);
@@ -65,6 +66,9 @@ class RtypeClient : public Game {
     bool isConnected() const { return _client.isConnected(); }
     te::network::GameClient& getClient() { return _client; }
 
+    void waitGame();  // Boucle d'attente (WAIT_GAME et READY_TO_START)
+    void runGame();   // Boucle de jeu principale (IN_GAME)
+
     void registerProtocolHandlers();
 
     void sendConnectionRequest();
@@ -78,6 +82,8 @@ class RtypeClient : public Game {
     void handlePong(const std::vector<uint8_t>& data);
     void handleEntitiesStates(const std::vector<uint8_t>& data);
     void handlePlayersStates(const std::vector<uint8_t>& data);
+    void handleGameStart(const std::vector<uint8_t>& data);
+    void handleGameEnded(const std::vector<uint8_t>& data);
 
     void append(std::vector<uint8_t>& vec, uint32_t value) const;
     uint32_t extractUint32(const std::vector<uint8_t>& data, size_t off) const;

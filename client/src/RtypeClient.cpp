@@ -75,51 +75,23 @@ void RtypeClient::run() {
         std::cout << "[Client] Connecting to server...\n";
         if (!connect(_server_ip, _server_port)) {
             std::cerr << "[Client] Failed to connect to server\n";
-            return;  // TODO(Pierre): devrait throw peut etre
+            return;
         }
 
-        std::cout << "[Client] Connected! Starting game loop...\n";
+        std::cout << "[Client] Connected! Waiting for game to start...\n";
         std::cout << "[Client] Press Ctrl+C to disconnect\n";
 
-        const float deltaTime = 1.0f / 60.0f;  // TODO(Pierre): voir update()
-        auto lastUpdate = std::chrono::steady_clock::now();
-        auto lastPing = std::chrono::steady_clock::now();
-
         while (!isEvent(te::event::System::Closed) && isConnected()) {
-            auto now = std::chrono::steady_clock::now();
-            auto elapsed =
-                std::chrono::duration_cast<std::chrono::milliseconds>(
-                now - lastUpdate).count();
-
-            if (elapsed >= (1000.0f / FPS)) {
-                update(deltaTime);
-                lastUpdate = now;
+            if (getGameState() == GAME_WAITING || getGameState() == IN_GAME) {
+                if (getGameState() == GAME_WAITING) {
+                    waitGame();
+                } else {
+                    runGame();
+                }
+            } else if (getGameState() == GAME_ENDED) {
+                std::cout << "[Client] Game ended!\n";
+                break;
             }
-
-           // Send ping every 5 seconds
-            auto pingElapsed =
-                std::chrono::duration_cast<std::chrono::seconds>(
-                now - lastPing).count();
-            if (pingElapsed >= 5) {
-                std::cout << "[Client] Sending PING...\n";
-                sendPing();
-                lastPing = now;
-            }
-
-            pollEvent();
-            auto events = getEvents();
-            if ((events.keys.keys[te::event::Z]
-                || events.keys.keys[te::event::Q]
-                || events.keys.keys[te::event::S]
-                || events.keys.keys[te::event::D])) {
-                sendEvent(events);
-            }
-
-            if (_my_client_entity_id.has_value()) {
-                emit(_my_client_entity_id);
-            }
-
-            runSystems();
         }
 
         if (isConnected()) {
@@ -129,7 +101,95 @@ void RtypeClient::run() {
         std::cout << "[Client] Goodbye!\n";
     } catch (const std::exception& e) {
         std::cerr << "[Client] Fatal error: " << e.what() << "\n";
-        return;  // TODO(Pierre): devrait throw
+        return;
+    }
+}
+
+void RtypeClient::waitGame() {
+    const float deltaTime = 1.0f / FPS;
+    auto lastUpdate = std::chrono::steady_clock::now();
+    auto lastPing = std::chrono::steady_clock::now();
+
+    while (!isEvent(te::event::System::Closed) && isConnected()
+           && getGameState() == GAME_WAITING) {
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - lastUpdate).count();
+
+        if (elapsed >= (1000.0f / FPS)) {
+            update(deltaTime);
+            lastUpdate = now;
+        }
+
+        // Send ping every 5 seconds
+        auto pingElapsed =
+            std::chrono::duration_cast<std::chrono::seconds>(
+            now - lastPing).count();
+        if (pingElapsed >= 5) {
+            std::cout << "[Client] Sending PING...\n";
+            sendPing();
+            lastPing = now;
+        }
+
+        pollEvent();
+        auto events = getEvents();
+
+        // TEMPORAIRE : Appuyer sur P pour envoyer WANT_START (test)
+        if (events.keys.keys[te::event::P]) {
+            std::cout << "[Client] P pressed - Sending WANT_START (test mode)\n";
+            sendWantStart();
+        }
+
+        // TODO(ETHAN): Ajouter ici la logique pour afficher et gérer le bouton "Ready"
+        // et appeler sendWantStart quand il clique sur le bouton
+
+        runSystems();
+    }
+}
+
+void RtypeClient::runGame() {
+    const float deltaTime = 1.0f / FPS;
+    auto lastUpdate = std::chrono::steady_clock::now();
+    auto lastPing = std::chrono::steady_clock::now();
+
+    while (!isEvent(te::event::System::Closed) && isConnected()
+           && getGameState() == IN_GAME) {
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - lastUpdate).count();
+
+        if (elapsed >= (1000.0f / FPS)) {
+            update(deltaTime);
+            lastUpdate = now;
+        }
+
+        // Send ping every 5 seconds
+        auto pingElapsed =
+            std::chrono::duration_cast<std::chrono::seconds>(
+            now - lastPing).count();
+        if (pingElapsed >= 5) {
+            std::cout << "[Client] Sending PING...\n";
+            sendPing();
+            lastPing = now;
+        }
+
+        pollEvent();
+        auto events = getEvents();
+
+        if ((events.keys.keys[te::event::Z]
+            || events.keys.keys[te::event::Q]
+            || events.keys.keys[te::event::S]
+            || events.keys.keys[te::event::D])) {
+            sendEvent(events);
+        }
+
+        if (_my_client_entity_id.has_value()) {
+            emit(_my_client_entity_id);
+        }
+
+        runSystems();
     }
 }
 
@@ -205,6 +265,16 @@ void RtypeClient::registerProtocolHandlers() {
         [this](const std::vector<uint8_t>& data) {
             handleEntitiesStates(data);
         });
+
+    _client.registerPacketHandler(GAME_START,
+        [this](const std::vector<uint8_t>& data) {
+            handleGameStart(data);
+        });
+
+    _client.registerPacketHandler(GAME_ENDED,
+        [this](const std::vector<uint8_t>& data) {
+            handleGameEnded(data);
+        });
 }
 
 void RtypeClient::sendConnectionRequest() {
@@ -236,6 +306,19 @@ void RtypeClient::sendPong() {
     _client.send(packet);
 }
 
+void RtypeClient::sendWantStart() {
+    if (!isConnected()) {
+        std::cerr << "[Client] Cannot send WANT_START: not connected\n";
+        return;
+    }
+
+    std::vector<uint8_t> packet;
+    packet.push_back(WANT_START);
+
+    std::cout << "[Client] Sending WANT_START to server\n";
+    _client.send(packet);
+}
+
 void RtypeClient::handleConnectionAccepted(const std::vector<uint8_t>& data) {
     if (data.size() < 4) {
         std::cerr << "[Client] Invalid CONNECTION_ACCEPTED packet size\n";
@@ -251,11 +334,14 @@ void RtypeClient::handleConnectionAccepted(const std::vector<uint8_t>& data) {
     // Create our player entity locally
     uint32_t client_id = next_entity_id++;
     _my_client_entity_id = client_id;
-    createEntity(client_id, "player", {0, 0});
     _serverToClientEntityMap[entity_id] = client_id;
 
     std::cout << "[Client] Created local player entity: server_id="
         << entity_id << " -> client_id=" << client_id << "\n";
+
+    // Mettre le jeu en mode attente
+    setGameState(GAME_WAITING);
+    std::cout << "[Client] Waiting for players to be ready...\n";
 }
 
 void RtypeClient::handleDisconnection(const std::vector<uint8_t>& data) {
@@ -453,4 +539,14 @@ void RtypeClient::handlePlayersStates(const std::vector<uint8_t>& data) {
         removeEntity(client_entity_id);
         _serverToClientEntityMap.erase(server_entity_id);
     }
+}
+
+void RtypeClient::handleGameStart(const std::vector<uint8_t>& data) {
+    Game::setGameState(Game::IN_GAME);
+    if (_my_client_entity_id.has_value())
+        createEntity(_my_client_entity_id.value(), "player", {0, 0});
+}
+
+void RtypeClient::handleGameEnded(const std::vector<uint8_t>& data) {
+    Game::setGameState(Game::GAME_ENDED);
 }

@@ -11,6 +11,7 @@
 #include <string>
 #include <cstdint>
 #include <vector>
+#include <utility>
 #include <unordered_map>
 #include <network/GameServer.hpp>
 #include <GameTool.hpp>
@@ -40,11 +41,14 @@ class RtypeServer : public Game {
     std::unordered_map<std::string, size_t> _client_entities;
     std::unordered_map<size_t, te::event::Events> _entity_events;
     float _state_broadcast_timer;
-    std::vector<size_t> _players;
+    std::vector<std::pair<size_t, PLAYER_STATE>> _players;
 
     bool start();
     void stop();
     void update(float delta_time);
+
+    void waitGame();  // Boucle d'attente (GAME_WAITING)
+    void runGame();   // Boucle de jeu principale (IN_GAME)
 
     void registerProtocolHandlers();
 
@@ -54,6 +58,7 @@ class RtypeServer : public Game {
     void sendDisconnection(const net::Address& client);
     void sendEntityState();  // Broadcast all entity positions
     void sendPlayersStates();  // Broadcast all entity positions
+    void sendGameStart();
 
     void handleConnectionRequest(const std::vector<uint8_t>& data,
                                   const net::Address& sender);
@@ -65,6 +70,8 @@ class RtypeServer : public Game {
       const net::Address& sender);
 
     void handleUserEvent(const std::vector<uint8_t>& data,
+      const net::Address& sender);
+    void handleWantStart(const std::vector<uint8_t>& data,
       const net::Address& sender);
 
     size_t spawnPlayerEntity(const net::Address& client);
