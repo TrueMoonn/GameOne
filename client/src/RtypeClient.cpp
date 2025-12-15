@@ -301,6 +301,11 @@ void RtypeClient::registerProtocolHandlers() {
         [this](const std::vector<uint8_t>& data) {
             handleGameEnded(data);
         });
+
+    _client.registerPacketHandler(NEW_WAVE,
+        [this](const std::vector<uint8_t>& data) {
+            handleWaveSpawned(data);
+        });
 }
 
 void RtypeClient::sendConnectionRequest() {
@@ -577,4 +582,10 @@ void RtypeClient::handleGameStarted(const std::vector<uint8_t>& data) {
 
 void RtypeClient::handleGameEnded(const std::vector<uint8_t>& data) {
     Game::setGameState(Game::GAME_ENDED);
+}
+
+void RtypeClient::handleWaveSpawned(const std::vector<uint8_t>& data) {
+    size_t waveNb = extractInt64(data, 0);
+
+    createMobWave(waveNb);
 }
