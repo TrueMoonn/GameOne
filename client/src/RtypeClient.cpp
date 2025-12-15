@@ -31,11 +31,25 @@ RtypeClient::RtypeClient(const std::string& protocol, uint16_t port,
     , _server_ip(server_ip) {
     createComponent("window", 0);
 
+    createSystem("apply_pattern");
+    createSystem("bound_hitbox");
+    createSystem("deal_damage");
     createSystem("movement2");
+    createSystem("animate");
     createSystem("draw");
+    createSystem("parallax_sys");
     createSystem("display");
 
     addConfig("./config/entities/client_player.toml");
+
+    // BACKGROUND
+    addConfig("./client/assets/background/config.toml");
+
+    // MOBS
+    addConfig("./config/entities/enemy1.toml");
+    addConfig("./client/assets/enemies/basic/enemy1.toml");
+    addConfig("./config/entities/enemy2.toml");
+    addConfig("./client/assets/enemies/basic/enemy2.toml");
 
     registerProtocolHandlers();
     _client.setConnectCallback([this]() {
@@ -78,6 +92,15 @@ void RtypeClient::run() {
             std::cerr << "[Client] Failed to connect to server\n";
             return;
         }
+
+        std::cout << "[Client] Connected! Loading entities...\n";
+
+        createEntity(10, "bg1");
+        createEntity(11, "bg2");
+        createEntity(12, "bg3");
+        createEntity(13, "bg4");
+        createEntity(14, "bg5");
+        createEntity(15, "bg6");
 
         std::cout << "[Client] Connected! Waiting for game to start...\n";
         std::cout << "[Client] Press Ctrl+C to disconnect\n";
