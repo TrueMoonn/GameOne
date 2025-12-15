@@ -30,6 +30,7 @@ class RtypeClient : public Game {
 
     void sendPing();
     void sendWantStart();  // Envoyer WANT_START au serveur
+    void sendShoot();
 
     std::chrono::_V2::steady_clock::time_point getPing();
     void setPing(std::chrono::_V2::steady_clock::time_point);

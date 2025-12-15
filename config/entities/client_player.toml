@@ -31,3 +31,35 @@
         frames = [
             [[0, 0], 8, 0.1, true]
         ]
+    [ENTITIES.projectile]
+        drawable = true
+        position2 = true
+            [ENTITIES.projectile.damage]
+            amount = 2
+
+            [ENTITIES.projectile.team]
+            name = "ally"
+
+            [ENTITIES.projectile.sprite]
+            path = "./TrueEngine/tests/game_test/assets/shoot.png"
+            size = [19, 6]
+            scale = [20, 10]
+            layer = 2
+
+            [ENTITIES.projectile.velocity2]
+            x = 5.0
+            y = 0.0
+
+            [ENTITIES.projectile.fragile]
+            priority = 1
+
+            [ENTITIES.projectile.hitbox]
+            left = 0.0
+            top = 0.0
+            width = 20.0
+            height = 10.0
+
+            [ENTITIES.projectile.animation]
+            frames = [
+                [[0, 0], 2, 0.1, true]
+            ]

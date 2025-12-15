@@ -23,6 +23,7 @@
 #include <physic/components/velocity.hpp>
 #include <physic/systems/movement.hpp>
 #include <entity_spec/components/health.hpp>
+#include <interaction/components/player.hpp>
 #include <event/events.hpp>
 #include <ECS/Zipper.hpp>
 
@@ -238,6 +239,10 @@ void RtypeServer::registerProtocolHandlers() {
     _server.registerPacketHandler(WANT_START,
         [this](const std::vector<uint8_t>& data, const net::Address& sender) {
             handleWantStart(data, sender);
+        });
+    _server.registerPacketHandler(PLAYER_SHOT,
+        [this](const std::vector<uint8_t>& data, const net::Address& sender) {
+            handleShoot(data, sender);
         });
 }
 
@@ -535,6 +540,28 @@ void RtypeServer::handleWantStart(const std::vector<uint8_t>& data,
         } else {
             std::cout << "[Server] Player " << entity_id
                       << " already marked as ready or in different state\n";
+        }
+    }
+}
+
+void RtypeServer::handleShoot(const std::vector<uint8_t>& data,
+    const net::Address& sender) {
+
+    std::string addr_key = addressToString(sender);
+    auto it = _client_entities.find(addr_key);
+    if (it == _client_entities.end())
+        return;
+
+    static std::size_t entity_proj = EntityField::PROJECTILES_BEGIN;
+    const auto &player = getComponent<addon::intact::Player>();
+    const auto &position = getComponent<addon::physic::Position2>();
+
+    if (entity_proj > EntityField::PROJECTILES_END)
+        entity_proj = EntityField::PROJECTILES_BEGIN;
+    for (ECS::Entity e = 0; e < player.size() && e < position.size(); ++e) {
+        if (e == it->second && player[e].has_value() && position[e].has_value()) {
+            createEntity(entity_proj++, "projectile",
+                {position[e].value().x + 10, position[e].value().y});
         }
     }
 }

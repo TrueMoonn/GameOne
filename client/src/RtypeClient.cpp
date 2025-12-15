@@ -160,7 +160,7 @@ void RtypeClient::waitGame() {
         auto events = getEvents();
 
         // TEMPORAIRE : Appuyer sur P pour envoyer WANT_START (test)
-        if (events.keys.keys[te::event::P]) {
+        if (events.keys.UniversalKey[te::event::P]) {
             std::cout
                 << "[Client] P pressed - Sending WANT_START (test mode)\n";
             sendWantStart();
@@ -204,16 +204,19 @@ void RtypeClient::runGame() {
         pollEvent();
         auto events = getEvents();
 
-        if ((events.keys.keys[te::event::Z]
-            || events.keys.keys[te::event::Q]
-            || events.keys.keys[te::event::S]
-            || events.keys.keys[te::event::D])) {
+        if ((events.keys.UniversalKey[te::event::Z]
+            || events.keys.UniversalKey[te::event::Q]
+            || events.keys.UniversalKey[te::event::S]
+            || events.keys.UniversalKey[te::event::D])) {
             sendEvent(events);
         }
 
         if (_my_client_entity_id.has_value()) {
             emit(_my_client_entity_id);
         }
+
+        if (events.keys.UniversalKey[te::event::Space])
+            sendShoot();
 
         runSystems();
     }
@@ -237,6 +240,19 @@ void RtypeClient::sendEvent(te::event::Events events) {
     packet.push_back(CLIENT_EVENT);
     std::vector<uint8_t> temp = net::PacketSerializer::serialize(events);
     std::copy(temp.begin(), temp.end(), back_inserter(packet));
+    _client.send(packet);
+}
+
+void RtypeClient::sendShoot() {
+     static te::Timestamp delay(0.2f);
+    if (!isConnected() && !delay.checkDelay()) {
+        return;
+    }
+
+    // TODO(PIERRE): delay
+    std::vector<uint8_t> packet;
+
+    packet.push_back(PLAYER_SHOT);
     _client.send(packet);
 }
 

@@ -76,6 +76,9 @@ class RtypeServer : public Game {
     void handleWantStart(const std::vector<uint8_t>& data,
       const net::Address& sender);
 
+    void handleShoot(const std::vector<uint8_t>& data,
+      const net::Address& sender);
+
     size_t spawnPlayerEntity(const net::Address& client);
     size_t spawnEnnemyEntity(const net::Address& client);
 
