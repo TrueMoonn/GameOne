@@ -283,20 +283,20 @@ void RtypeServer::processEntitiesEvents() {
 }
 
 void RtypeServer::append(std::vector<uint8_t>& vec, uint32_t value) const {
-    std::array<uint8_t, 4> bytes;
-    std::memcpy(bytes.data(), &value, 4);
+    std::array<uint8_t, sizeof(uint32_t)> bytes;
+    std::memcpy(bytes.data(), &value, sizeof(uint32_t));
     vec.insert(vec.end(), bytes.begin(), bytes.end());
 }
 
 void RtypeServer::append(std::vector<uint8_t>& vec, int64_t value) const {
-    std::array<uint8_t, 8> bytes;
-    std::memcpy(bytes.data(), &value, 8);
+    std::array<uint8_t, sizeof(int64_t)> bytes;
+    std::memcpy(bytes.data(), &value, sizeof(int64_t));
     vec.insert(vec.end(), bytes.begin(), bytes.end());
 }
 
 void RtypeServer::append(std::vector<uint8_t>& vec, float value) const {
-    std::array<uint8_t, 4> bytes;
-    std::memcpy(bytes.data(), &value, 4);
+    std::array<uint8_t, sizeof(float)> bytes;
+    std::memcpy(bytes.data(), &value, sizeof(float));
     vec.insert(vec.end(), bytes.begin(), bytes.end());
 }
 
