@@ -31,9 +31,11 @@ RtypeClient::RtypeClient(const std::string& protocol, uint16_t port,
 
     createSystem("movement2");
     createSystem("draw");
+    createSystem("parallax_sys");
     createSystem("display");
 
     addConfig("./config/entities/player.toml");
+    addConfig("./client/assets/background/config.toml");
 
     registerProtocolHandlers();
     _client.setConnectCallback([this]() {
@@ -77,7 +79,16 @@ void RtypeClient::run() {
             return;  // TODO(Pierre): devrait throw peut etre
         }
 
-        std::cout << "[Client] Connected! Starting game loop...\n";
+        std::cout << "[Client] Connected! Loading entities...\n";
+
+        createEntity(10, "bg1");
+        createEntity(11, "bg2");
+        createEntity(12, "bg3");
+        createEntity(13, "bg4");
+        createEntity(14, "bg5");
+        createEntity(15, "bg6");
+
+        std::cout << "[Client] Starting game loop...\n";
         std::cout << "[Client] Press Ctrl+C to disconnect\n";
 
         const float deltaTime = 1.0f / 60.0f;  // TODO(Pierre): voir update()

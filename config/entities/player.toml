@@ -17,6 +17,7 @@
         path = "./TrueEngine/tests/game_test/assets/projectile.png"
         size = [10, 10]
         scale = [30, 30]
+        layer = 1
 
         [ENTITIES.player.velocity2]
         x = 0.0

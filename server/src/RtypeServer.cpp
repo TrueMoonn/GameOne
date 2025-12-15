@@ -90,6 +90,7 @@ void RtypeServer::run() {
         // Main server loop
         const float deltaTime = 1.0f / 60.0f;  // TODO(Pierre): same Client
         auto lastUpdate = std::chrono::steady_clock::now();
+        auto lastEvent = std::chrono::steady_clock::now();
 
         while (g_running) {
             auto now = std::chrono::steady_clock::now();
@@ -101,6 +102,10 @@ void RtypeServer::run() {
                 update(deltaTime);
                 lastUpdate = now;
             }
+
+            elapsed =
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                now - lastEvent).count();
 
             processEntitiesEvents();
             runSystems();
@@ -124,11 +129,10 @@ void RtypeServer::stop() {
 }
 
 void RtypeServer::update(float delta_time) {
-    _server.receive(0, 100);
     _server.update(delta_time);
     // Broadcast entity state every 100ms
     _state_broadcast_timer += delta_time;
-    if (_state_broadcast_timer >= 0.1f) {
+    if (_state_broadcast_timer >= 0.01f) {
         sendEntityState();
         _state_broadcast_timer = 0.0f;
     }
