@@ -42,7 +42,7 @@ RtypeServer::RtypeServer(uint16_t port,
     , _state_broadcast_timer(0.0f) {
     registerProtocolHandlers();
 
-    addConfig("config/entities/server_player.toml");
+    addConfig("config/entities/player.toml");
     addConfig("config/entities/boundaries.toml");
 
     createSystem("movement2");
@@ -176,7 +176,7 @@ void RtypeServer::runGame() {
             now - lastEnnemyWave).count();
 
         if (elapsed >= (1000.0f * TIME_ENNEMY_SPAWN)) {
-            spawnEnnemyEntity(2);
+            spawnEnnemyEntity(0);
             lastEnnemyWave = now;
         }
 

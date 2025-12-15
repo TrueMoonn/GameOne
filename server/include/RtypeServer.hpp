@@ -31,7 +31,7 @@ class RtypeServer : public Game {
     size_t getClientCount() const { return _server.getClientCount(); }
 
     #define FPS 60
-    #define TIME_ENNEMY_SPAWN 10
+    #define TIME_ENNEMY_SPAWN 15
 
  private:
     te::network::GameServer _server;
