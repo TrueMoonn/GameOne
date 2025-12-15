@@ -1,0 +1,12 @@
+[ENTITIES.enemy2]
+
+drawable = true
+[ENTITIES.enemy2.sprite]
+path = "./client/assets/enemies/basic/enemy1.png"
+size = [29, 29]
+scale = [30, 30]
+layer = 1
+[ENTITIES.enemy2.animation]
+frames = [
+    [[0, 0], 5, 0.2, true]
+]

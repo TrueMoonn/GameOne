@@ -6,10 +6,8 @@
     position2 = true
         [ENTITIES.player.health]
         amount = 5
-
         [ENTITIES.player.damage]
         amount = 2
-
         [ENTITIES.player.team]
         name = "ally"
 

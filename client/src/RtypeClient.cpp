@@ -29,13 +29,25 @@ RtypeClient::RtypeClient(const std::string& protocol, uint16_t port,
     , _server_ip(server_ip) {
     createComponent("window", 0);
 
+    createSystem("apply_pattern");
+    createSystem("bound_hitbox");
+    createSystem("deal_damage");
     createSystem("movement2");
+    createSystem("animate");
     createSystem("draw");
     createSystem("parallax_sys");
     createSystem("display");
 
     addConfig("./config/entities/player.toml");
+
+    // BACKGROUND
     addConfig("./client/assets/background/config.toml");
+
+    // MOBS
+    addConfig("./config/entities/enemy1.toml");
+    addConfig("./client/assets/enemies/basic/enemy1.toml");
+    addConfig("./config/entities/enemy2.toml");
+    addConfig("./client/assets/enemies/basic/enemy2.toml");
 
     registerProtocolHandlers();
     _client.setConnectCallback([this]() {
