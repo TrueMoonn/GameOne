@@ -53,8 +53,20 @@ RtypeServer::RtypeServer(uint16_t port,
                   << " (clients left: " << _server.getClientCount() << ")"
                   << "\n";
 
-        // TODO(Pierre): Cleanup player entities in ECS
-        // TODO(Pierre): Broadcast to other clients that this player left
+        std::string addr_key = addressToString(client);
+        auto it = _client_entities.find(addr_key);
+        if (it != _client_entities.end()) {
+            size_t entity_id = it->second;
+            std::cout << "[Server] Removing disconnected client's entity " << entity_id << "\n";
+
+            auto player_it = std::find(_players.begin(), _players.end(), entity_id);
+            if (player_it != _players.end()) {
+                std::cout << "[Server] Removing player " << entity_id << " from players list\n";
+                _players.erase(player_it);
+            }
+            removeEntity(entity_id);
+            _client_entities.erase(it);
+        }
     });
 }
 
@@ -224,6 +236,12 @@ void RtypeServer::handleDisconnection(const std::vector<uint8_t>& data,
     if (it != _client_entities.end()) {
         size_t entity_id = it->second;
         std::cout << "[Server] Removing entity " << entity_id << "\n";
+
+        auto player_it = std::find(_players.begin(), _players.end(), entity_id);
+        if (player_it != _players.end()) {
+            std::cout << "[Server] Removing player " << entity_id << " from players list\n";
+            _players.erase(player_it);
+        }
         removeEntity(entity_id);
         _client_entities.erase(it);
     }

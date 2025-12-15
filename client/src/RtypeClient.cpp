@@ -363,6 +363,8 @@ void RtypeClient::handlePlayersStates(const std::vector<uint8_t>& data) {
     size_t size = data.size();
     size_t follow = 0;
 
+    std::unordered_map<uint32_t, bool> present_entities;
+
     while (follow < size) {
         uint32_t server_entity_id = extractUint32(data, follow);
         follow += sizeof(uint32_t);
@@ -372,6 +374,8 @@ void RtypeClient::handlePlayersStates(const std::vector<uint8_t>& data) {
         follow += sizeof(float);
         int64_t hp = extractInt64(data, follow);
         follow += sizeof(int64_t);
+
+        present_entities[server_entity_id] = true;
 
         if (_my_server_entity_id.has_value()
             && server_entity_id == _my_server_entity_id.value()) {
@@ -427,5 +431,26 @@ void RtypeClient::handlePlayersStates(const std::vector<uint8_t>& data) {
                 << client_entity_id
                 << " (healths.size()=" << healths.size() << ")\n";
         }
+    }
+
+    std::vector<uint32_t> entities_to_remove;
+    for (const auto& [server_entity_id, client_entity_id] : _serverToClientEntityMap) {
+        if (_my_server_entity_id.has_value()
+            && server_entity_id == _my_server_entity_id.value()) {
+            continue;
+        }
+
+        if (present_entities.find(server_entity_id) == present_entities.end()) {
+            entities_to_remove.push_back(server_entity_id);
+        }
+    }
+
+    for (uint32_t server_entity_id : entities_to_remove) {
+        uint32_t client_entity_id = _serverToClientEntityMap[server_entity_id];
+        std::cout << "[Client] Player disappeared from server state: server_entity_id="
+                  << server_entity_id << " -> client_entity_id=" << client_entity_id
+                  << " - Removing entity\n";
+        removeEntity(client_entity_id);
+        _serverToClientEntityMap.erase(server_entity_id);
     }
 }
