@@ -67,6 +67,7 @@ class RtypeServer : public Game {
     void sendEntityState();  // Broadcast all entity positions
     void sendPlayersStates();  // Broadcast all entity positions
     void sendGameStart();
+    void sendEnnemySpawn(size_t waveNb);
 
     void handleConnectionRequest(const std::vector<uint8_t>& data,
                                   const net::Address& sender);

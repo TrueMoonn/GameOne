@@ -403,6 +403,7 @@ std::string RtypeServer::addressToString(const net::Address& addr) const {
 
 void RtypeServer::spawnEnnemyEntity(size_t waveNb) {
     createMobWave(waveNb);
+    sendEnnemySpawn(waveNb);
 }
 
 size_t RtypeServer::spawnPlayerEntity(const net::Address& client) {
@@ -414,6 +415,20 @@ size_t RtypeServer::spawnPlayerEntity(const net::Address& client) {
     _client_entities[addr_key] = entity;
     _players.push_back({entity, WAIT_GAME});  // Le joueur est en attente
     return entity;
+}
+
+void RtypeServer::sendEnnemySpawn(size_t waveNb) {
+    if (_server.getClientCount() == 0)
+        return;
+
+    std::vector<uint8_t> packet;
+
+    packet.push_back(NEW_WAVE);
+
+    append(packet, static_cast<int64_t>(waveNb));
+
+    std::cout << "Sending spawn wave : WAVE " << waveNb << "\n";
+    _server.broadcastToAll(packet);
 }
 
 void RtypeServer::sendEntityState() {
