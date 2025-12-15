@@ -79,13 +79,11 @@ Every code (1 ... 255) is on ONE BYTE only
 **these fields have fixed size, thus do not need parsing of any kind, and values are all packet together without separators** → `(not separated)`
 
 ```
-51  PLAYERS POSITIONS   [51 + X times (4B int id + 4B int x + 4B int y)]        ->  Send all players positions (not separated)
-52  PLAYERS HP          [52 + X times (4B int id + 4B int HP)]                  ->  Send all players health points (not separated)
-53  PLAYERS SCORES      [53 + X times (4B int id + 4B int score)]               ->  Send all players scores (not separated)
-54  ENTITIES POSITIONS  [54 + X times (4B int id + 4B int x + 4B int y)]        ->  Send all entities positions (not separated)
-55  ENTITIES HP         [55 + X times (4B int id + 4B int HP)]                  ->  Send all entities health points (not separated)
-56  GAME DURATION       [56 + 4B int duration]                                  ->  Send game duration since started
-57  GAME LEVEL          [57 + 4B int level]                                     ->  Send current game level
-60  PLAYER DEAD         [NO DATA]                                               ->  Client's player is dead :'(
-61  GAME PAUSED         [NO DATA]                                               ->  A player has set the game on pause / A player has set the game on play
+51  PLAYERS STATES      [51 + X times (4B int id + 4B int x + 4B int y + 8B health)]    ->  Send all players positions + healths (not separated)
+52  PROJECTILES POS     [52 + X times (4B int id + 4B int x + 4B int y)]                ->  Send all projectiles positions (not separated)              {WIP}
+54  ENNEMIES STATES     [54 + X times (4B int id + 4B int x + 4B int y + 8B health)]    ->  Send all ennemy positions + healths (not separated)         {WIP}
+56  GAME DURATION       [56 + 4B int duration]                                          ->  Send game duration since started                            {WIP}
+57  GAME LEVEL          [57 + 4B int level]                                             ->  Send current game level                                     {WIP}
+60  PLAYER DEAD         [NO DATA]                                                       ->  Client's player is dead :'(                                 {WIP}
+61  GAME PAUSED         [NO DATA]                                                       ->  A player has set the game on pause / play                   {WIP}
 ```
