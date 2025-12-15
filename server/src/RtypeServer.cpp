@@ -26,6 +26,7 @@
 #include <event/events.hpp>
 #include <ECS/Zipper.hpp>
 
+#include <waves.hpp>
 #include <RtypeServer.hpp>
 
 // Global flag for signal handling
@@ -156,10 +157,11 @@ void RtypeServer::runGame() {
     const float deltaTime = 1.0f / FPS;
     auto lastUpdate = std::chrono::steady_clock::now();
     auto lastEnnemyWave = std::chrono::steady_clock::now();
+    uint waveNb = 0;
 
     std::cout << "[Server] Game started! Running game loop..." << std::endl;
 
-    spawnEnnemyEntity(1);
+    spawnEnnemyEntity(waveNb);
     while (g_running && getGameState() == IN_GAME) {
         auto now = std::chrono::steady_clock::now();
         auto elapsed =
@@ -176,8 +178,11 @@ void RtypeServer::runGame() {
             now - lastEnnemyWave).count();
 
         if (elapsed >= (1000.0f * TIME_ENNEMY_SPAWN)) {
-            spawnEnnemyEntity(0);
+            spawnEnnemyEntity(waveNb);
             lastEnnemyWave = now;
+            waveNb++;
+            if (waveNb >= NB_WAVES)
+                waveNb = 0;
         }
 
         // Traiter les événements des joueurs et exécuter les systèmes de jeu
