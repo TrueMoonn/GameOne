@@ -537,8 +537,9 @@ void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
         size_t idx = entity - EntityField::PROJECTILES_BEGIN;
 
         if (idx >= present.size()) {
-            std::cerr << "[ERROR] Index " << idx << " out of bounds for present vector size "
-                      << present.size() << "\n";
+            std::cerr << "[ERROR] Index " << idx
+                << " out of bounds for present vector size "
+                << present.size() << "\n";
             continue;
         }
 
@@ -590,7 +591,8 @@ void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
         (EntityField::PLAYER_END - EntityField::PLAYER_BEGIN), false);
 
 
-    while (follow + sizeof(size_t) + 2 * sizeof(float) + sizeof(int64_t) <= size) {
+    while (follow + sizeof(size_t) + 2 * sizeof(float) + sizeof(int64_t)
+        <= size) {
         size_t entity = extractSizeT(data, follow);
         follow += sizeof(size_t);
         float x = extractFloat(data, follow);
