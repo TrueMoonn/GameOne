@@ -30,6 +30,7 @@ class RtypeClient : public Game {
 
     void sendPing();
     void sendWantStart();  // Envoyer WANT_START au serveur
+    void sendShoot();
 
     std::chrono::_V2::steady_clock::time_point getPing();
     void setPing(std::chrono::_V2::steady_clock::time_point);
@@ -60,10 +61,10 @@ class RtypeClient : public Game {
     std::vector<int> _players;
 
     // next entities
+    size_t _nextMap = MAP_BEGIN;
     size_t _nextPlayer = PLAYER_BEGIN;
     size_t _nextEnnemy = ENEMIES_BEGIN;
     size_t _nextProjectile = PROJECTILES_BEGIN;
-
 
     bool connect(const std::string& ip, uint16_t port);
     void disconnect();
@@ -86,8 +87,9 @@ class RtypeClient : public Game {
     void handleServerFull(const std::vector<uint8_t>& data);
     void handlePing(const std::vector<uint8_t>& data);
     void handlePong(const std::vector<uint8_t>& data);
-    void handleEntitiesStates(const std::vector<uint8_t>& data);
-    void handlePlayersStates(const std::vector<uint8_t>& data);
+    void handleEnnemiesData(const std::vector<uint8_t>& data);
+    void handlePlayersData(const std::vector<uint8_t>& data);
+    void handleProjectilesData(const std::vector<uint8_t>& data);
     void handleGameStarted(const std::vector<uint8_t>& data);
     void handleGameEnded(const std::vector<uint8_t>& data);
     void handleWaveSpawned(const std::vector<uint8_t>& data);

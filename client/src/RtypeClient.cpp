@@ -39,7 +39,8 @@ RtypeClient::RtypeClient(const std::string& protocol, uint16_t port,
     createSystem("draw");
     createSystem("parallax_sys");
     createSystem("display");
-    addConfig("./client/assets/enemies/basic/player.toml");
+    addConfig("./config/entities/player.toml");
+    addConfig("./client/assets/player/player.toml");
 
     // BACKGROUND
     addConfig("./client/assets/background/config.toml");
@@ -210,6 +211,9 @@ void RtypeClient::runGame() {
             sendEvent(events);
         }
 
+        if (events.keys.UniversalKey[te::event::Space])
+            sendShoot();
+
         if (_my_client_entity_id.has_value()) {
             emit(_my_client_entity_id);
         }
@@ -236,6 +240,19 @@ void RtypeClient::sendEvent(te::event::Events events) {
     packet.push_back(CLIENT_EVENT);
     std::vector<uint8_t> temp = net::PacketSerializer::serialize(events);
     std::copy(temp.begin(), temp.end(), back_inserter(packet));
+    _client.send(packet);
+}
+
+void RtypeClient::sendShoot() {
+    static te::Timestamp delay(0.2f);
+    if (!isConnected() || !delay.checkDelay()) {
+        return;
+    }
+
+    // TODO(PIERRE): delay
+    std::vector<uint8_t> packet;
+
+    packet.push_back(PLAYER_SHOT);
     _client.send(packet);
 }
 
@@ -281,14 +298,19 @@ void RtypeClient::registerProtocolHandlers() {
             handlePong(data);
         });
 
-    _client.registerPacketHandler(PLAYERS_STATES,
+    _client.registerPacketHandler(PLAYERS_DATA,
         [this](const std::vector<uint8_t>& data) {
-            handlePlayersStates(data);
+            handlePlayersData(data);
         });
 
-    _client.registerPacketHandler(ENTITIES_STATES,
+    _client.registerPacketHandler(PROJECTILES_DATA,
         [this](const std::vector<uint8_t>& data) {
-            handleEntitiesStates(data);
+            handleProjectilesData(data);
+        });
+
+    _client.registerPacketHandler(ENNEMIES_DATA,
+        [this](const std::vector<uint8_t>& data) {
+            handleEnnemiesData(data);
         });
 
     _client.registerPacketHandler(GAME_START,
@@ -364,7 +386,6 @@ void RtypeClient::handleConnectionAccepted(const std::vector<uint8_t>& data) {
     // Create our player entity locally
     uint32_t client_id = next_entity_id++;
     _my_client_entity_id = client_id;
-    _serverToClientEntityMap[entity_id] = client_id;
 
     std::cout << "[Client] Created local player entity: server_id="
         << entity_id << " -> client_id=" << client_id << "\n";
@@ -381,6 +402,7 @@ void RtypeClient::handleDisconnection(const std::vector<uint8_t>& data) {
 void RtypeClient::handleServerFull(const std::vector<uint8_t>& data) {
     std::cout << "[Client] Server full!\n";
     disconnect();  // TODO(PIERRE): On pourrait le laisser attendre
+    // ouais why not, on le deco si il fait rien trop longtemps
 }
 
 void RtypeClient::handlePing(const std::vector<uint8_t>& data) {
@@ -439,60 +461,141 @@ int64_t RtypeClient::extractInt64(const std::vector<uint8_t>& data,
     return value;
 }
 
-void RtypeClient::handleEntitiesStates(const std::vector<uint8_t>& data) {
+void RtypeClient::handleEnnemiesData(const std::vector<uint8_t>& data) {
     size_t size = data.size();
     size_t follow = 0;
 
-    while (follow < size) {
-        uint32_t server_e_id = extractUint32(data, follow);
-        follow += sizeof(uint32_t);
+    std::vector<bool> present(
+        (EntityField::ENEMIES_END - EntityField::ENEMIES_BEGIN), false);
+
+    while (follow + sizeof(size_t) + 2 * sizeof(float) <= size) {
+        size_t entity = extractSizeT(data, follow);
+        follow += sizeof(size_t);
         float x = extractFloat(data, follow);
         follow += sizeof(float);
         float y = extractFloat(data, follow);
         follow += sizeof(float);
 
-        auto& positions = getComponent<addon::physic::Position2>();
+        if (entity < EntityField::ENEMIES_BEGIN ||
+            entity >= EntityField::ENEMIES_END)
+            continue;
 
-        uint32_t client_e_id;
-        if (_serverToClientEntityMap.find(server_e_id)
-            == _serverToClientEntityMap.end()) {
-            client_e_id = next_entity_id++;
-            createEntity(client_e_id, "player", {0, 0});
-            _serverToClientEntityMap[server_e_id] = client_e_id;
-            std::cout << "[Client] Created OTHER player entity: server_e_id="
-                << server_e_id << " -> client_e_id=" << client_e_id
+        present[entity - EntityField::ENEMIES_BEGIN] = true;
+
+        if (entity >= getComponent<addon::physic::Position2>().size() ||
+            !getComponent<addon::physic::Position2>()[entity].has_value()) {
+            _nextEnnemy++;
+            createEntity(entity, "ennemy1", {x, y});
+
+            std::cout << "[Client] Created enemy entity: entity="
+                << entity << " -> entity=" << entity
                 << " at position (" << x << ", " << y << ")\n";
         } else {
-            client_e_id = _serverToClientEntityMap[server_e_id];
+            auto& positions = getComponent<addon::physic::Position2>();
+            positions[entity].value().x = x;
+            positions[entity].value().y = y;
         }
+    }
 
-        // Update the entity's position
-        if (client_e_id < positions.size()
-            && positions[client_e_id].has_value()) {
-            positions[client_e_id].value().x = x;
-            positions[client_e_id].value().y = y;
-            std::cout << "[Client] Updated OTHER player entity server_e_id="
-                << server_e_id
-                << " (client_e_id=" << client_e_id << ") to position ("
-                << x << ", " << y << ")\n";
-        } else {
-            std::cout
-                << "[Client] ERROR: Cannot update position for client_e_id="
-                << client_e_id
-                << " (positions.size()=" << positions.size() << ")\n";
+    // A mettre avant la boucle + enlever celui dedans pour l'opti ?
+    auto& positions = getComponent<addon::physic::Position2>();
+
+    // Delete absent ennemies
+    for (size_t idx = EntityField::ENEMIES_BEGIN;
+        idx < EntityField::ENEMIES_END; idx++) {
+        if (idx >= positions.size())
+            break;
+        if (!positions[idx].has_value())
+            continue;
+        if (!present[idx - EntityField::ENEMIES_BEGIN]) {
+            removeEntity(idx);
+            std::cout << "deleted ennemy\n";
         }
     }
 }
 
-void RtypeClient::handlePlayersStates(const std::vector<uint8_t>& data) {
+void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
     size_t size = data.size();
     size_t follow = 0;
 
-    std::unordered_map<uint32_t, bool> present_entities;
+    std::vector<bool> present(
+        (EntityField::PROJECTILES_END - EntityField::PROJECTILES_BEGIN), false);
 
-    while (follow < size) {
-        uint32_t server_entity_id = extractUint32(data, follow);
-        follow += sizeof(uint32_t);
+
+    while (follow + sizeof(size_t) + 2 * sizeof(float) <= size) {
+        size_t entity = extractSizeT(data, follow);
+        follow += sizeof(size_t);
+        float x = extractFloat(data, follow);
+        follow += sizeof(float);
+        float y = extractFloat(data, follow);
+        follow += sizeof(float);
+
+        if (entity < EntityField::PROJECTILES_BEGIN ||
+            entity >= EntityField::PROJECTILES_END) {
+            continue;
+        }
+
+        size_t idx = entity - EntityField::PROJECTILES_BEGIN;
+
+        if (idx >= present.size()) {
+            std::cerr << "[ERROR] Index " << idx
+                << " out of bounds for present vector size "
+                << present.size() << "\n";
+            continue;
+        }
+
+        present[idx] = true;
+
+        if (entity >= getComponent<addon::physic::Position2>().size() ||
+            !getComponent<addon::physic::Position2>()[entity].has_value()) {
+            _nextProjectile++;
+            createEntity(entity, "projectile", {x, y});
+
+            std::cout << "[Client] Created projectile entity: entity="
+                << entity << " -> entity=" << entity
+                << " at position (" << x << ", " << y << ")\n";
+        } else {
+            auto& positions = getComponent<addon::physic::Position2>();
+            positions[entity].value().x = x;
+            positions[entity].value().y = y;
+        }
+    }
+
+    // A mettre avant la boucle + enlever celui dedans pour l'opti ?
+    auto& positions = getComponent<addon::physic::Position2>();
+
+    // Delete absent projectiles
+    for (size_t idx = EntityField::PROJECTILES_BEGIN;
+        idx < EntityField::PROJECTILES_END; idx++) {
+        if (idx >= positions.size())
+            break;
+        if (!positions[idx].has_value())
+            continue;
+
+        size_t present_idx = idx - EntityField::PROJECTILES_BEGIN;
+        if (present_idx >= present.size()) {
+            std::cerr << "[ERROR] Cleanup: present_idx " << present_idx
+                      << " out of bounds\n";
+            continue;
+        }
+
+        if (!present[present_idx]) {
+            removeEntity(idx);
+            std::cout << "deleted projectile\n";
+        }
+    }
+}void RtypeClient::handlePlayersData(const std::vector<uint8_t>& data) {
+    size_t size = data.size();
+    size_t follow = 0;
+
+    std::vector<bool> present(
+        (EntityField::PLAYER_END - EntityField::PLAYER_BEGIN), false);
+
+
+    while (follow + sizeof(size_t) + 2 * sizeof(float) + sizeof(int64_t)
+        <= size) {
+        size_t entity = extractSizeT(data, follow);
+        follow += sizeof(size_t);
         float x = extractFloat(data, follow);
         follow += sizeof(float);
         float y = extractFloat(data, follow);
@@ -500,85 +603,66 @@ void RtypeClient::handlePlayersStates(const std::vector<uint8_t>& data) {
         int64_t hp = extractInt64(data, follow);
         follow += sizeof(int64_t);
 
-        present_entities[server_entity_id] = true;
-
-        if (_my_server_entity_id.has_value()
-            && server_entity_id == _my_server_entity_id.value()) {
-            // recaler myplayer
+        if (entity < EntityField::PLAYER_BEGIN ||
+            entity >= EntityField::PLAYER_END)
             continue;
-        }
 
-        auto& positions = getComponent<addon::physic::Position2>();
-        auto& healths = getComponent<addon::eSpec::Health>();
+        present[entity - EntityField::PLAYER_BEGIN] = true;
 
-        uint32_t client_entity_id;
-        if (_serverToClientEntityMap.find(server_entity_id)
-        == _serverToClientEntityMap.end()) {
-            client_entity_id = next_entity_id++;
-            createEntity(client_entity_id, "player", {0, 0});
-            _serverToClientEntityMap[server_entity_id] = client_entity_id;
+        // if (_my_server_entity_id.has_value()
+        //     && entity == _my_server_entity_id.value()) {
+        //     // recaler myplayer
+        // }
+
+        if (entity >= getComponent<addon::physic::Position2>().size() ||
+            !getComponent<addon::physic::Position2>()[entity].has_value()) {
+            _nextPlayer++;
+            createEntity(entity, "player", {0, 0});
+
             std::cout <<
-            "[Client] Created OTHER player entity: server_entity_id=" <<
-                server_entity_id << " -> client_entity_id=" << client_entity_id
+            "[Client] Created OTHER player entity: entity=" <<
+                entity << " -> entity=" << entity
                 << " at position (" << x << ", " << y << ")\n";
         } else {
-            client_entity_id = _serverToClientEntityMap[server_entity_id];
+            auto& positions = getComponent<addon::physic::Position2>();
+            positions[entity].value().x = x;
+            positions[entity].value().y = y;
+
+            // std::cout <<
+            //     "[Client] Updated OTHER player entity entity=" << entity
+            //     << " (entity=" << entity
+            //     << ") to position (" << x << ", " << y << ")\n";
         }
 
-        // Update the entity's position
-        if (client_entity_id < positions.size()
-            && positions[client_entity_id].has_value()) {
-            positions[client_entity_id].value().x = x;
-            positions[client_entity_id].value().y = y;
-            std::cout <<
-                "[Client] Updated OTHER player entity server_entity_id="
-                << server_entity_id
-                << " (client_entity_id=" << client_entity_id
-                << ") to position (" << x << ", " << y << ")\n";
-        } else {
-            std::cout <<
-                "[Client] ERROR: Cannot update position for client_entity_id="
-                << client_entity_id
-                << " (positions.size()=" << positions.size() << ")\n";
-        }
+        auto& healths = getComponent<addon::eSpec::Health>();
+        if (healths[entity].has_value()) {
+            healths[entity].value().amount = hp;
 
-        if (client_entity_id < healths.size()
-            && healths[client_entity_id].has_value()) {
-            healths[client_entity_id].value().amount = hp;
-            std::cout <<
-                "[Client] Updated OTHER player entity server_entity_id="
-                << server_entity_id
-                << " (client_entity_id=" << client_entity_id << ") to health ("
-                << hp << ")\n";
+            // std::cout <<
+            //     "[Client] Updated OTHER player entity entity="
+            //     << entity
+            //     << " (entity=" << entity << ") to health ("
+            //     << hp << ")\n";
         } else {
             std::cout <<
-                "[Client] ERROR: Cannot update position for client_entity_id="
-                << client_entity_id
+                "[Client] ERROR: Cannot update health for entity="
+                << entity
                 << " (healths.size()=" << healths.size() << ")\n";
         }
     }
 
-    std::vector<uint32_t> entities_to_remove;
-    for (const auto& [server_entity_id, client_entity_id]
-        : _serverToClientEntityMap) {
-        if (_my_server_entity_id.has_value()
-            && server_entity_id == _my_server_entity_id.value()) {
+    // A mettre avant la boucle + enlever celui dedans pour l'opti ?
+    auto& positions = getComponent<addon::physic::Position2>();
+
+    // Delete absent players
+    for (size_t idx = EntityField::PLAYER_BEGIN;
+        idx < EntityField::PLAYER_END; idx++) {
+        if (!positions[idx].has_value())
             continue;
+        if (!present[idx - EntityField::PLAYER_BEGIN]) {
+            removeEntity(idx);
+            std::cout << "deleted player\n";
         }
-
-        if (present_entities.find(server_entity_id) == present_entities.end()) {
-            entities_to_remove.push_back(server_entity_id);
-        }
-    }
-
-    for (uint32_t server_entity_id : entities_to_remove) {
-        uint32_t client_entity_id = _serverToClientEntityMap[server_entity_id];
-        std::cout
-        << "[Client] Player disappeared from server state: server_entity_id="
-        << server_entity_id << " -> client_entity_id=" << client_entity_id
-        << " - Removing entity\n";
-        removeEntity(client_entity_id);
-        _serverToClientEntityMap.erase(server_entity_id);
     }
 }
 
@@ -595,5 +679,5 @@ void RtypeClient::handleGameEnded(const std::vector<uint8_t>& data) {
 void RtypeClient::handleWaveSpawned(const std::vector<uint8_t>& data) {
     size_t waveNb = extractSizeT(data, 0);
 
-    createMobWave(waveNb);
+    _nextEnnemy = createMobWave(waveNb, _nextEnnemy, EntityField::ENEMIES_END);
 }
