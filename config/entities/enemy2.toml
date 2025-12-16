@@ -1,20 +1,21 @@
 [ENTITIES.enemy2]
-    # PHYSIC
-    position2 = true
-    movable = true
-    [ENTITIES.enemy2.velocity2]
-        x = -120
-        y = 0
-    [ENTITIES.enemy2.hitbox]
-        left = 0.0
-        top = 0.0
-        width = 30.0
-        height = 30.0
 
-    # SPEC
-    [ENTITIES.enemy2.health]
-        amount = 1
-    [ENTITIES.enemy2.damage]
-        amount = 1
-    [ENTITIES.enemy2.team]
-        name = "mob"
+# PHYSIC
+position2 = true
+movable = true
+[ENTITIES.enemy2.velocity2]
+    x = -120
+    y = 0
+[ENTITIES.enemy2.hitbox]
+    left = 0.0
+    top = 0.0
+    width = 30.0
+    height = 30.0
+
+# SPEC
+[ENTITIES.enemy2.health]
+    amount = 1
+[ENTITIES.enemy2.damage]
+    amount = 1
+[ENTITIES.enemy2.team]
+    name = "mob"

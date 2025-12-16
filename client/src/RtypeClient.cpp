@@ -50,9 +50,10 @@ RtypeClient::RtypeClient(const std::string& protocol, uint16_t port,
 
 void RtypeClient::setECS(void) {
     createSystem("apply_pattern");
+    createSystem("movement2");
     createSystem("bound_hitbox");
     createSystem("deal_damage");
-    createSystem("movement2");
+    createSystem("kill_entity");
     createSystem("animate");
     createSystem("draw");
     createSystem("parallax_sys");
