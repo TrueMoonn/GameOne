@@ -467,7 +467,7 @@ void RtypeClient::handleEnnemiesData(const std::vector<uint8_t>& data) {
     std::vector<bool> present(
         (EntityField::ENEMIES_END - EntityField::ENEMIES_BEGIN), false);
 
-    while (follow < size) {
+    while (follow + sizeof(size_t) + 2 * sizeof(float) <= size) {
         size_t entity = extractSizeT(data, follow);
         follow += sizeof(size_t);
         float x = extractFloat(data, follow);
@@ -476,21 +476,21 @@ void RtypeClient::handleEnnemiesData(const std::vector<uint8_t>& data) {
         follow += sizeof(float);
 
         if (entity < EntityField::ENEMIES_BEGIN ||
-            entity > EntityField::ENEMIES_END)
+            entity >= EntityField::ENEMIES_END)
             continue;
 
         present[entity - EntityField::ENEMIES_BEGIN] = true;
 
-        auto& positions = getComponent<addon::physic::Position2>();
-
-        if (!positions[entity].has_value()) {
+        if (entity >= getComponent<addon::physic::Position2>().size() ||
+            !getComponent<addon::physic::Position2>()[entity].has_value()) {
             _nextEnnemy++;
             createEntity(entity, "ennemy1", {x, y});
 
-            std::cout << "[Client] Created projectile entity: entity="
+            std::cout << "[Client] Created enemy entity: entity="
                 << entity << " -> entity=" << entity
                 << " at position (" << x << ", " << y << ")\n";
         } else {
+            auto& positions = getComponent<addon::physic::Position2>();
             positions[entity].value().x = x;
             positions[entity].value().y = y;
         }
@@ -502,6 +502,8 @@ void RtypeClient::handleEnnemiesData(const std::vector<uint8_t>& data) {
     // Delete absent ennemies
     for (size_t idx = EntityField::ENEMIES_BEGIN;
         idx < EntityField::ENEMIES_END; idx++) {
+        if (idx >= positions.size())
+            break;
         if (!positions[idx].has_value())
             continue;
         if (!present[idx - EntityField::ENEMIES_BEGIN]) {
@@ -518,7 +520,8 @@ void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
     std::vector<bool> present(
         (EntityField::PROJECTILES_END - EntityField::PROJECTILES_BEGIN), false);
 
-    while (follow < size) {
+
+    while (follow + sizeof(size_t) + 2 * sizeof(float) <= size) {
         size_t entity = extractSizeT(data, follow);
         follow += sizeof(size_t);
         float x = extractFloat(data, follow);
@@ -527,14 +530,22 @@ void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
         follow += sizeof(float);
 
         if (entity < EntityField::PROJECTILES_BEGIN ||
-            entity > EntityField::PROJECTILES_END)
+            entity >= EntityField::PROJECTILES_END) {
             continue;
+        }
 
-        present[entity - EntityField::PROJECTILES_BEGIN] = true;
+        size_t idx = entity - EntityField::PROJECTILES_BEGIN;
 
-        auto& positions = getComponent<addon::physic::Position2>();
+        if (idx >= present.size()) {
+            std::cerr << "[ERROR] Index " << idx << " out of bounds for present vector size "
+                      << present.size() << "\n";
+            continue;
+        }
 
-        if (!positions[entity].has_value()) {
+        present[idx] = true;
+
+        if (entity >= getComponent<addon::physic::Position2>().size() ||
+            !getComponent<addon::physic::Position2>()[entity].has_value()) {
             _nextProjectile++;
             createEntity(entity, "projectile", {x, y});
 
@@ -542,6 +553,7 @@ void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
                 << entity << " -> entity=" << entity
                 << " at position (" << x << ", " << y << ")\n";
         } else {
+            auto& positions = getComponent<addon::physic::Position2>();
             positions[entity].value().x = x;
             positions[entity].value().y = y;
         }
@@ -553,16 +565,24 @@ void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
     // Delete absent projectiles
     for (size_t idx = EntityField::PROJECTILES_BEGIN;
         idx < EntityField::PROJECTILES_END; idx++) {
+        if (idx >= positions.size())
+            break;
         if (!positions[idx].has_value())
             continue;
-        if (!present[idx - EntityField::PROJECTILES_BEGIN]) {
+
+        size_t present_idx = idx - EntityField::PROJECTILES_BEGIN;
+        if (present_idx >= present.size()) {
+            std::cerr << "[ERROR] Cleanup: present_idx " << present_idx
+                      << " out of bounds\n";
+            continue;
+        }
+
+        if (!present[present_idx]) {
             removeEntity(idx);
-            std::cout << "deleted projectile\n";
+            // std::cout << "deleted projectile\n";
         }
     }
-}
-
-void RtypeClient::handlePlayersData(const std::vector<uint8_t>& data) {
+}void RtypeClient::handlePlayersData(const std::vector<uint8_t>& data) {
     size_t size = data.size();
     size_t follow = 0;
 
@@ -570,7 +590,7 @@ void RtypeClient::handlePlayersData(const std::vector<uint8_t>& data) {
         (EntityField::PLAYER_END - EntityField::PLAYER_BEGIN), false);
 
 
-    while (follow < size) {
+    while (follow + sizeof(size_t) + 2 * sizeof(float) + sizeof(int64_t) <= size) {
         size_t entity = extractSizeT(data, follow);
         follow += sizeof(size_t);
         float x = extractFloat(data, follow);
@@ -581,7 +601,7 @@ void RtypeClient::handlePlayersData(const std::vector<uint8_t>& data) {
         follow += sizeof(int64_t);
 
         if (entity < EntityField::PLAYER_BEGIN ||
-            entity > EntityField::PLAYER_END)
+            entity >= EntityField::PLAYER_END)
             continue;
 
         present[entity - EntityField::PLAYER_BEGIN] = true;
@@ -591,10 +611,8 @@ void RtypeClient::handlePlayersData(const std::vector<uint8_t>& data) {
         //     // recaler myplayer
         // }
 
-        auto& positions = getComponent<addon::physic::Position2>();
-        auto& healths = getComponent<addon::eSpec::Health>();
-
-        if (!positions[entity].has_value()) {
+        if (entity >= getComponent<addon::physic::Position2>().size() ||
+            !getComponent<addon::physic::Position2>()[entity].has_value()) {
             _nextPlayer++;
             createEntity(entity, "player", {0, 0});
 
@@ -603,23 +621,25 @@ void RtypeClient::handlePlayersData(const std::vector<uint8_t>& data) {
                 entity << " -> entity=" << entity
                 << " at position (" << x << ", " << y << ")\n";
         } else {
+            auto& positions = getComponent<addon::physic::Position2>();
             positions[entity].value().x = x;
             positions[entity].value().y = y;
 
-            std::cout <<
-                "[Client] Updated OTHER player entity entity=" << entity
-                << " (entity=" << entity
-                << ") to position (" << x << ", " << y << ")\n";
+            // std::cout <<
+            //     "[Client] Updated OTHER player entity entity=" << entity
+            //     << " (entity=" << entity
+            //     << ") to position (" << x << ", " << y << ")\n";
         }
 
+        auto& healths = getComponent<addon::eSpec::Health>();
         if (healths[entity].has_value()) {
             healths[entity].value().amount = hp;
 
-            std::cout <<
-                "[Client] Updated OTHER player entity entity="
-                << entity
-                << " (entity=" << entity << ") to health ("
-                << hp << ")\n";
+            // std::cout <<
+            //     "[Client] Updated OTHER player entity entity="
+            //     << entity
+            //     << " (entity=" << entity << ") to health ("
+            //     << hp << ")\n";
         } else {
             std::cout <<
                 "[Client] ERROR: Cannot update health for entity="

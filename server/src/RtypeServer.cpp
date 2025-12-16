@@ -476,7 +476,7 @@ void RtypeServer::sendEnnemiesData() {
 
     for (auto &&[entity, pos] : ECS::IndexedZipper(positions)) {
         if (entity < EntityField::ENEMIES_BEGIN ||
-            entity > EntityField::ENEMIES_END)
+            entity >= EntityField::ENEMIES_END)
             continue;
 
         append(packet, entity);
@@ -500,7 +500,7 @@ void RtypeServer::sendProjectilesData() {
 
     for (auto &&[entity, pos] : ECS::IndexedZipper(positions)) {
         if (entity < EntityField::PROJECTILES_BEGIN ||
-            entity > EntityField::PROJECTILES_END)
+            entity >= EntityField::PROJECTILES_END)
             continue;
 
         append(packet, entity);
