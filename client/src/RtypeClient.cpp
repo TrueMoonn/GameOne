@@ -34,7 +34,6 @@ RtypeClient::RtypeClient(const std::string& protocol, uint16_t port,
     , _client(protocol)
     , _server_port(port)
     , _server_ip(server_ip) {
-
     registerProtocolHandlers();
     _client.setConnectCallback([this]() {
         std::cout
@@ -78,6 +77,8 @@ void RtypeClient::setConfig(void) {
     addConfig("./client/assets/enemies/basic/enemy1.toml");
     addConfig("./config/entities/enemy2.toml");
     addConfig("./client/assets/enemies/basic/enemy2.toml");
+    addConfig("./config/entities/enemy3.toml");
+    addConfig("./client/assets/enemies/basic/enemy3.toml");
 }
 
 void RtypeClient::setEntities(int scene) {
