@@ -50,8 +50,12 @@ RtypeServer::RtypeServer(uint16_t port,
     addConfig("config/entities/enemy3.toml");
     addConfig("config/entities/boundaries.toml");
 
+    createSystem("apply_pattern");
     createSystem("movement2");
     createSystem("bound_hitbox");
+    createSystem("deal_damage");
+    createSystem("apply_fragile");
+    createSystem("kill_entity");
 
     generateMapBounds();
     _server.setClientConnectCallback([this](const net::Address& client) {
