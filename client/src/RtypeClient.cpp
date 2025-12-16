@@ -185,7 +185,7 @@ void RtypeClient::waitGame() {
             std::cout
                 << "[Client] P pressed - Sending WANT_START (test mode)\n";
             for (int i = static_cast<int>(MENU_BEGIN);
-            i <= static_cast<int>(MENU_BEGIN + 1); i++) {
+            i <= static_cast<int>(MENU_BEGIN + 2); i++) {
                 removeEntity(i);
             }
             setECS(INGAME_ID);
