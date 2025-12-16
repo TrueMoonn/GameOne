@@ -6,6 +6,10 @@
 ** Copyright [2025] <DeepestDungeonGroup>
 */
 
+#include "ECS/Entity.hpp"
+#include "ECS/Zipper.hpp"
+#include "Game.hpp"
+#include "physic/components/velocity.hpp"
 #include <arpa/inet.h>
 #include <algorithm>
 #include <array>
@@ -18,6 +22,7 @@
 #include <vector>
 #include <unordered_map>
 #include <physic/components/position.hpp>
+#include <display/components/animation.hpp>
 #include <entity_spec/components/health.hpp>
 #include <event/events.hpp>
 #include <RtypeClient.hpp>
@@ -216,9 +221,24 @@ void RtypeClient::runGame() {
 
         if (_my_client_entity_id.has_value()) {
             emit(_my_client_entity_id);
+            playersAnimation();
         }
 
         runSystems();
+    }
+}
+
+void RtypeClient::playersAnimation(void) {
+    auto& velocities = getComponent<addon::physic::Velocity2>();
+    auto& animations = getComponent<addon::display::Animation>();
+
+    for (ECS::Entity e = EntityField::PLAYER_BEGIN;
+        e < EntityField::PLAYER_END; e++) {
+        if (velocities[e].has_value() && animations[e].has_value()) {
+            auto& anim = animations[e].value();
+            auto& vel = velocities[e].value();
+            anim.curAnim = vel.y > 0 ? 1 : vel.y < 0 ? 2 : 0;
+        }
     }
 }
 

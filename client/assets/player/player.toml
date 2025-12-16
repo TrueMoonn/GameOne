@@ -1,25 +1,26 @@
-[ENTITIES]
-    [ENTITIES.player]
+[ENTITIES.player]
+drawable = true
+    [ENTITIES.player.sprite]
+    path = "./client/assets/player/player.png"
+    size = [26, 21]
+    scale = [26, 21]
+    layer = 1
+
+    [ENTITIES.player.animation]
+    frames = [
+        [[0, 0], 1, 0, true],
+        [[0, 1], 1, 0, true],
+        [[0, 2], 1, 0, true]
+    ]
+[ENTITIES.projectile]
     drawable = true
-        [ENTITIES.player.sprite]
-        path = "./TrueEngine/tests/game_test/assets/projectile.png"
-        size = [10, 10]
-        scale = [30, 30]
-        layer = 1
+        [ENTITIES.projectile.sprite]
+        path = "./client/assets/player/shoot.png"
+        size = [19, 6]
+        scale = [20, 10]
+        layer = 2
 
-        [ENTITIES.player.animation]
+        [ENTITIES.projectile.animation]
         frames = [
-            [[0, 0], 8, 0.1, true]
+            [[0, 0], 2, 0.1, true]
         ]
-    [ENTITIES.projectile]
-        drawable = true
-            [ENTITIES.projectile.sprite]
-            path = "./client/assets/player/shoot.png"
-            size = [19, 6]
-            scale = [20, 10]
-            layer = 2
-
-            [ENTITIES.projectile.animation]
-            frames = [
-                [[0, 0], 2, 0.1, true]
-            ]
