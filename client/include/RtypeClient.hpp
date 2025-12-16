@@ -20,6 +20,9 @@
 #include <Protocol.hpp>
 // #include <GameException.hpp>
 
+#define MENU_ID 0
+#define INGAME_ID 1
+
 class RtypeClient : public Game {
  public:
     explicit RtypeClient(const std::string& protocol = "UDP",
@@ -34,6 +37,9 @@ class RtypeClient : public Game {
 
     std::chrono::_V2::steady_clock::time_point getPing();
     void setPing(std::chrono::_V2::steady_clock::time_point);
+
+    void setECS(int scene);
+    void setEntities(int scene);
 
     #define FPS 60
 
