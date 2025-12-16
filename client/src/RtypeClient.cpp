@@ -272,7 +272,6 @@ void RtypeClient::disconnect() {
 }
 
 void RtypeClient::update(float delta_time) {
-    _client.receive(0, 10);
     _client.update(delta_time);
 }
 
