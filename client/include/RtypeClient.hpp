@@ -74,6 +74,8 @@ class RtypeClient : public Game {
     void waitGame();  // Boucle d'attente (WAIT_GAME et READY_TO_START)
     void runGame();   // Boucle de jeu principale (IN_GAME)
 
+    void playersAnimation(void);
+
     void registerProtocolHandlers();
 
     void sendConnectionRequest();
