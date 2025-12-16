@@ -173,6 +173,11 @@ void RtypeServer::runGame() {
             now - lastUpdate).count();
         if (elapsed >= UPDATES_TIME) {
             update(0.0f);
+
+            /// BAPTISTE FAUT QU'ON PARLE CAR JSP
+            processEntitiesEvents();
+            runSystems();
+
             lastUpdate = now;
         }
 
@@ -207,10 +212,6 @@ void RtypeServer::runGame() {
             spawnEnnemyEntity(0);
             lastEnnemyWave = now;
         }
-
-        // Traiter les événements des joueurs et exécuter les systèmes de jeu
-        processEntitiesEvents();
-        runSystems();
     }
 
     std::cout << "[Server] Game loop ended." << std::endl;
