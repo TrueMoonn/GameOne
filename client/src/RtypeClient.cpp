@@ -34,7 +34,6 @@ RtypeClient::RtypeClient(const std::string& protocol, uint16_t port,
     , _client(protocol)
     , _server_port(port)
     , _server_ip(server_ip) {
-
     registerProtocolHandlers();
     _client.setConnectCallback([this]() {
         std::cout
