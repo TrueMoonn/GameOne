@@ -39,7 +39,8 @@ RtypeClient::RtypeClient(const std::string& protocol, uint16_t port,
     createSystem("draw");
     createSystem("parallax_sys");
     createSystem("display");
-    addConfig("./client/assets/enemies/basic/player.toml");
+    addConfig("./config/entities/player.toml");
+    addConfig("./client/assets/player/player.toml");
 
     // BACKGROUND
     addConfig("./client/assets/background/config.toml");
