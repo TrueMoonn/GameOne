@@ -1,0 +1,12 @@
+[ENTITIES]
+    [ENTITIES.buttonstart]
+    drawable = true
+    clickable = true
+    hoverable = true
+    position2 = true
+
+        [ENTITIES.buttonstart.sprite]
+        path = "./client/assets/buttons/Start.png"
+        size = [600, 200]
+        scale = [300, 100]
+        layer = 0

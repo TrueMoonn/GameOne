@@ -102,7 +102,7 @@ void RtypeClient::run() {
         createEntity(14, "bg5");
         createEntity(15, "bg6");
 
-        std::cout << "[Client] Starting game loop...\n";
+        std::cout << "[Client] Connected! Waiting for game to start...\n";
         std::cout << "[Client] Press Ctrl+C to disconnect\n";
 
         while (!isEvent(te::event::System::Closed) && isConnected()) {
@@ -160,7 +160,7 @@ void RtypeClient::waitGame() {
         auto events = getEvents();
 
         // TEMPORAIRE : Appuyer sur P pour envoyer WANT_START (test)
-        if (events.keys.keys[te::event::P]) {
+        if (events.keys.UniversalKey[te::event::P]) {
             std::cout
                 << "[Client] P pressed - Sending WANT_START (test mode)\n";
             sendWantStart();
@@ -204,10 +204,10 @@ void RtypeClient::runGame() {
         pollEvent();
         auto events = getEvents();
 
-        if ((events.keys.keys[te::event::Z]
-            || events.keys.keys[te::event::Q]
-            || events.keys.keys[te::event::S]
-            || events.keys.keys[te::event::D])) {
+        if ((events.keys.UniversalKey[te::event::Z]
+            || events.keys.UniversalKey[te::event::Q]
+            || events.keys.UniversalKey[te::event::S]
+            || events.keys.UniversalKey[te::event::D])) {
             sendEvent(events);
         }
 
