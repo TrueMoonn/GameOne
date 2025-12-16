@@ -210,12 +210,12 @@ void RtypeClient::runGame() {
             sendEvent(events);
         }
 
+        if (events.keys.UniversalKey[te::event::Space])
+            sendShoot();
+
         if (_my_client_entity_id.has_value()) {
             emit(_my_client_entity_id);
         }
-
-        if (events.keys.UniversalKey[te::event::Space])
-            sendShoot();
 
         runSystems();
     }
@@ -243,8 +243,8 @@ void RtypeClient::sendEvent(te::event::Events events) {
 }
 
 void RtypeClient::sendShoot() {
-     static te::Timestamp delay(0.2f);
-    if (!isConnected() && !delay.checkDelay()) {
+    static te::Timestamp delay(0.2f);
+    if (!isConnected() || !delay.checkDelay()) {
         return;
     }
 
@@ -579,7 +579,7 @@ void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
 
         if (!present[present_idx]) {
             removeEntity(idx);
-            // std::cout << "deleted projectile\n";
+            std::cout << "deleted projectile\n";
         }
     }
 }void RtypeClient::handlePlayersData(const std::vector<uint8_t>& data) {
