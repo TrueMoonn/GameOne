@@ -1,0 +1,11 @@
+[ENTITIES]
+    [ENTITIES.buttonquit]
+    drawable = true
+    clickable = true
+    hoverable = true
+    position2 = true
+
+        [ENTITIES.buttonquit.sprite]
+        path = "./client/assets/buttons/Quit.png"
+        size = [600, 200]
+        scale = [300, 100]

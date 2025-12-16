@@ -67,11 +67,11 @@ void RtypeClient::setEntities(int scene) {
     if (scene == MENU_ID) {
         addConfig("./client/assets/menu/menu.toml");
         addConfig("./client/assets/buttons/buttonstart.toml");
+        addConfig("./client/assets/buttons/buttonquit.toml");
         createComponent("window", SYSTEM_ENTITY);
         createEntity(var++, "menu", {0.f, 0.f});
-        std::cout << var << std::endl;
         createEntity(var++, "buttonstart", {500.f, 250.f});
-        std::cout << var << std::endl;
+        createEntity(var++, "buttonquit", {500.f, 400.f});
     }
     if (scene == INGAME_ID) {
         addConfig("./config/entities/client_player.toml");
