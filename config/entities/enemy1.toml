@@ -4,7 +4,7 @@
 position2 = true
 movable = true
 [ENTITIES.enemy1.velocity2]
-x = -2.5
+x = -1.0
 y = 0
 [ENTITIES.enemy1.hitbox]
 left = 0.0
