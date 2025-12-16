@@ -29,13 +29,16 @@ void Game::setGameState(Game::GAME_STATE game_state) {
     _game_state = game_state;
 }
 
-void Game::createMobWave(std::size_t index) {
-    ECS::Entity e = BEGIN_WAVE_ENTITY;
+size_t Game::createMobWave(std::size_t index, size_t begin, size_t end) {
+    ECS::Entity e = begin;
     if (index < NB_WAVES) {
         for (auto& entity : WAVES[index]) {
+            if (e >= end)
+                break;
             createEntity(e++, entity.name, entity.pos);
         }
     }
+    return e;
 }
 
 void Game::createProjectile(ECS::Entity e) {

@@ -23,6 +23,7 @@
 #include <physic/components/velocity.hpp>
 #include <physic/systems/movement.hpp>
 #include <entity_spec/components/health.hpp>
+#include <interaction/components/player.hpp>
 #include <event/events.hpp>
 #include <ECS/Zipper.hpp>
 
@@ -42,7 +43,7 @@ RtypeServer::RtypeServer(uint16_t port,
     , _state_broadcast_timer(0.0f) {
     registerProtocolHandlers();
 
-    addConfig("config/entities/server_player.toml");
+    addConfig("config/entities/player.toml");
     addConfig("config/entities/boundaries.toml");
 
     createSystem("movement2");
@@ -136,7 +137,6 @@ void RtypeServer::run() {
 }
 
 void RtypeServer::waitGame() {
-    const float deltaTime = 1.0f / FPS;
     auto lastUpdate = std::chrono::steady_clock::now();
 
     while (g_running && getGameState() == GAME_WAITING) {
@@ -145,33 +145,73 @@ void RtypeServer::waitGame() {
             std::chrono::duration_cast<std::chrono::milliseconds>(
             now - lastUpdate).count();
 
-        if (elapsed >= (1000.0f / FPS)) {
-            update(deltaTime);
+        if (elapsed >= UPDATES_TIME) {
+            update(0.0f);
             lastUpdate = now;
         }
     }
 }
 
 void RtypeServer::runGame() {
-    const float deltaTime = 1.0f / FPS;
     auto lastUpdate = std::chrono::steady_clock::now();
+    auto lastEnnemyWave = std::chrono::steady_clock::now();
+    auto lastPlayersUpdate = std::chrono::steady_clock::now();
+    auto lastEnnemiesUpdate = std::chrono::steady_clock::now();
+    auto lastProjectileUpdate = std::chrono::steady_clock::now();
 
     std::cout << "[Server] Game started! Running game loop..." << std::endl;
 
+    spawnEnnemyEntity(1);
     while (g_running && getGameState() == IN_GAME) {
-        auto now = std::chrono::steady_clock::now();
-        auto elapsed =
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-            now - lastUpdate).count();
+        if (getGameState() != IN_GAME)
+            break;
 
-        if (elapsed >= (1000.0f / FPS)) {
-            update(deltaTime);
+        auto now = std::chrono::steady_clock::now();
+
+        // Update game
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - lastUpdate).count();
+        if (elapsed >= UPDATES_TIME) {
+            update(0.0f);
+
+            /// BAPTISTE FAUT QU'ON PARLE CAR JSP
+            processEntitiesEvents();
+            runSystems();
+
             lastUpdate = now;
         }
 
-        // Traiter les événements des joueurs et exécuter les systèmes de jeu
-        processEntitiesEvents();
-        runSystems();
+        // Refresh players
+        elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - lastPlayersUpdate).count();
+        if (elapsed >= REFRESH_PLAYERS_TIME) {
+            sendPlayersData();
+            lastPlayersUpdate = now;
+        }
+
+        // Refresh ennemies
+        elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - lastEnnemiesUpdate).count();
+        if (elapsed >= REFRESH_ENNEMIES_TIME) {
+            sendEnnemiesData();
+            lastEnnemiesUpdate = now;
+        }
+
+        // Refresh projectiles
+        elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - lastProjectileUpdate).count();
+        if (elapsed >= REFRESH_PROJECTILE_TIME) {
+            sendProjectilesData();
+            lastProjectileUpdate = now;
+        }
+
+        // Spawn ennemy waves
+        elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - lastEnnemyWave).count();
+        if (elapsed >= 1000.0f * TIME_ENNEMY_SPAWN) {
+            spawnEnnemyEntity(0);
+            lastEnnemyWave = now;
+        }
     }
 
     std::cout << "[Server] Game loop ended." << std::endl;
@@ -186,10 +226,10 @@ void RtypeServer::stop() {
 }
 
 void RtypeServer::generatePlayerHitbox() {
-    size_t left_pannel_e = _next_entity_id++;
-    size_t top_pannel_e = _next_entity_id++;
-    size_t right_pannel_e = _next_entity_id++;
-    size_t bottom_pannel_e = _next_entity_id++;
+    size_t left_pannel_e = _nextMapE++;
+    size_t top_pannel_e = _nextMapE++;
+    size_t right_pannel_e = _nextMapE++;
+    size_t bottom_pannel_e = _nextMapE++;
 
     createEntity(left_pannel_e, "boundary_left");
     createEntity(top_pannel_e, "boundary_top");
@@ -199,14 +239,8 @@ void RtypeServer::generatePlayerHitbox() {
 
 void RtypeServer::update(float delta_time) {
     _server.update(delta_time);
-    // Broadcast entity state every X ms
     if (getGameState() != IN_GAME)
         return;
-    _state_broadcast_timer += delta_time;
-    if (_state_broadcast_timer >= 0.01f) {
-        sendPlayersStates();
-        _state_broadcast_timer = 0.0f;
-    }
 }
 
 void RtypeServer::registerProtocolHandlers() {
@@ -238,6 +272,10 @@ void RtypeServer::registerProtocolHandlers() {
     _server.registerPacketHandler(WANT_START,
         [this](const std::vector<uint8_t>& data, const net::Address& sender) {
             handleWantStart(data, sender);
+        });
+    _server.registerPacketHandler(PLAYER_SHOT,
+        [this](const std::vector<uint8_t>& data, const net::Address& sender) {
+            handleShoot(data, sender);
         });
 }
 
@@ -372,6 +410,13 @@ void RtypeServer::append(std::vector<uint8_t>& vec, uint32_t value) const {
     vec.insert(vec.end(), bytes.begin(), bytes.end());
 }
 
+void RtypeServer::append(std::vector<uint8_t>& vec, size_t value) const {
+    std::array<uint8_t, sizeof(size_t)> bytes;
+    std::memcpy(bytes.data(), &value, sizeof(size_t));
+    vec.insert(vec.end(), bytes.begin(), bytes.end());
+}
+
+
 void RtypeServer::append(std::vector<uint8_t>& vec, int64_t value) const {
     std::array<uint8_t, sizeof(int64_t)> bytes;
     std::memcpy(bytes.data(), &value, sizeof(int64_t));
@@ -390,20 +435,14 @@ std::string RtypeServer::addressToString(const net::Address& addr) const {
     return oss.str();
 }
 
-size_t RtypeServer::spawnEnnemyEntity(const net::Address& client) {
-    size_t entity = _next_entity_id++;
-
-    createComponent("position2", entity);
-    createComponent("velocity2", entity);
-    createComponent("health", entity);
-
-    std::string addr_key = addressToString(client);
-    _client_entities[addr_key] = entity;
-    return entity;
+void RtypeServer::spawnEnnemyEntity(size_t waveNb) {
+    _nextEnnemyE = createMobWave(waveNb,
+        _nextEnnemyE, EntityField::ENEMIES_END);
+    sendEnnemySpawn(waveNb);
 }
 
 size_t RtypeServer::spawnPlayerEntity(const net::Address& client) {
-    size_t entity = _next_entity_id++;
+    size_t entity = _nextPlayerE++;
 
     createEntity(entity, "player");
 
@@ -413,60 +452,91 @@ size_t RtypeServer::spawnPlayerEntity(const net::Address& client) {
     return entity;
 }
 
-void RtypeServer::sendEntityState() {
+void RtypeServer::sendEnnemySpawn(size_t waveNb) {
     if (_server.getClientCount() == 0)
         return;
 
     std::vector<uint8_t> packet;
-    packet.push_back(ENTITIES_STATES);
+
+    packet.push_back(NEW_WAVE);
+
+    append(packet, waveNb);
+
+    std::cout << "Sending spawn wave : WAVE " << waveNb << "\n";
+    _server.broadcastToAll(packet);
+}
+
+void RtypeServer::sendEnnemiesData() {
+    if (_server.getClientCount() == 0)
+        return;
+
+    std::vector<uint8_t> packet;
+    packet.push_back(ProtocolCode::ENNEMIES_DATA);
 
     auto& positions = getComponent<addon::physic::Position2>();
 
     for (auto &&[entity, pos] : ECS::IndexedZipper(positions)) {
-        auto isPlayer = std::find_if(_players.begin(), _players.end(),
-            [entity](const std::pair<size_t, PLAYER_STATE>& p) {
-                return p.first == entity;
-            });
-        if (isPlayer != _players.end())
+        if (entity < EntityField::ENEMIES_BEGIN ||
+            entity >= EntityField::ENEMIES_END)
             continue;
 
-        append(packet, static_cast<uint32_t>(entity));
+        append(packet, entity);
         append(packet, pos.x);
         append(packet, pos.y);
 
-        std::cout << "  - Entity " << entity << " at (" << pos.x << ", "
+        std::cout << "  - Ennemy " << entity << " at (" << pos.x << ", "
             << pos.y << ")" << "\n";
     }
     _server.broadcastToAll(packet);
 }
 
-void RtypeServer::sendPlayersStates() {
+void RtypeServer::sendProjectilesData() {
     if (_server.getClientCount() == 0)
         return;
 
     std::vector<uint8_t> packet;
-    packet.push_back(PLAYERS_STATES);
+    packet.push_back(ProtocolCode::PROJECTILES_DATA);
+
+    auto& positions = getComponent<addon::physic::Position2>();
+
+    for (auto &&[entity, pos] : ECS::IndexedZipper(positions)) {
+        if (entity < EntityField::PROJECTILES_BEGIN ||
+            entity >= EntityField::PROJECTILES_END)
+            continue;
+
+        append(packet, entity);
+        append(packet, pos.x);
+        append(packet, pos.y);
+
+        std::cout << "  - Projectile " << entity << " at (" << pos.x << ", "
+            << pos.y << ")" << "\n";
+    }
+    _server.broadcastToAll(packet);
+}
+
+void RtypeServer::sendPlayersData() {
+    if (_server.getClientCount() == 0)
+        return;
+
+    std::vector<uint8_t> packet;
+    packet.push_back(ProtocolCode::PLAYERS_DATA);
 
     auto& positions = getComponent<addon::physic::Position2>();
     auto& healths = getComponent<addon::eSpec::Health>();
 
     for (auto &&[entity, pos, hp] : ECS::IndexedZipper(positions, healths)) {
-        auto isPlayer = std::find_if(_players.begin(), _players.end(),
-            [entity](const std::pair<size_t, PLAYER_STATE>& p) {
-                return p.first == entity;
-            });
-        if (isPlayer == _players.end())
+        if (entity < EntityField::PLAYER_BEGIN ||
+            entity > EntityField::PLAYER_END)
             continue;
 
-        append(packet, static_cast<uint32_t>(entity));
+        append(packet, entity);
         append(packet, pos.x);
         append(packet, pos.y);
         append(packet, hp.amount);
 
         std::cout << "  - Player " << entity << " at (" << pos.x << ", "
-            << pos.y << ", " << hp.amount << ")" << "\n";
+            << pos.y << ") , " << hp.amount << "hp" << "\n";
     }
-
     _server.broadcastToAll(packet);
 }
 
@@ -539,3 +609,22 @@ void RtypeServer::handleWantStart(const std::vector<uint8_t>& data,
     }
 }
 
+void RtypeServer::handleShoot(const std::vector<uint8_t>& data,
+    const net::Address& sender) {
+
+    std::string addr_key = addressToString(sender);
+    auto it = _client_entities.find(addr_key);
+    if (it == _client_entities.end())
+        return;
+
+    const auto &player = getComponent<addon::intact::Player>();
+    const auto &position = getComponent<addon::physic::Position2>();
+
+    if (_nextProjectileE > EntityField::PROJECTILES_END)
+        _nextProjectileE = EntityField::PROJECTILES_BEGIN;
+    for (ECS::Entity e = 0; e < player.size() && e < position.size(); ++e) {
+        if (e == it->second && player[e].has_value() && position[e].has_value())
+            createEntity(_nextProjectileE++, "projectile",
+                {position[e].value().x + 10, position[e].value().y});
+    }
+}
