@@ -34,7 +34,7 @@ class RtypeServer : public Game {
     #define TIME_ENNEMY_SPAWN 15            // seconds
 
     #define REFRESH_PLAYERS_TIME 10         // milliseconds
-    #define REFRESH_ENNEMIES_TIME 10       // milliseconds
+    #define REFRESH_ENNEMIES_TIME 500       // milliseconds
     #define REFRESH_PROJECTILE_TIME 100     // milliseconds
 
  private:
