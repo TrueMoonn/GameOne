@@ -55,9 +55,7 @@ class RtypeClient : public Game {
     std::chrono::_V2::steady_clock::time_point _pingTime;
 
     uint32_t next_entity_id = 1;
-    std::optional<uint32_t> _my_server_entity_id;
-    std::optional<uint32_t> _my_client_entity_id;
-    std::unordered_map<uint32_t, uint32_t> _serverToClientEntityMap;
+    std::optional<uint32_t> _my_entity_id;
     std::vector<int> _players;
 
     // next entities
