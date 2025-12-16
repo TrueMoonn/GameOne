@@ -34,29 +34,9 @@ RtypeClient::RtypeClient(const std::string& protocol, uint16_t port,
     , _client(protocol)
     , _server_port(port)
     , _server_ip(server_ip) {
-    createComponent("window", 0);
+    setECS(MENU_ID);
 
-    createSystem("apply_pattern");
-    createSystem("bound_hitbox");
-    createSystem("deal_damage");
-    createSystem("movement2");
-    createSystem("animate");
-    createSystem("draw");
-    createSystem("parallax_sys");
-    createSystem("display");
-    addConfig("./config/entities/player.toml");
-    addConfig("./client/assets/player/player.toml");
-
-    // BACKGROUND
-    addConfig("./client/assets/background/config.toml");
-
-    // MOBS
-    addConfig("./config/entities/enemy1.toml");
-    addConfig("./client/assets/enemies/basic/enemy1.toml");
-    addConfig("./config/entities/enemy2.toml");
-    addConfig("./client/assets/enemies/basic/enemy2.toml");
-    addConfig("./config/entities/enemy3.toml");
-    addConfig("./client/assets/enemies/basic/enemy3.toml");
+    setEntities(MENU_ID);
 
     registerProtocolHandlers();
     _client.setConnectCallback([this]() {
@@ -70,6 +50,46 @@ RtypeClient::RtypeClient(const std::string& protocol, uint16_t port,
         std::cout << "[Client] Disconnected from server\n";
         // TODO(Pierre): Cleanup local entities, return to menu, etc.
     });
+}
+
+void RtypeClient::setECS(int scene) {
+    if (scene == MENU_ID) {
+        createSystem("draw");
+        createSystem("display");
+    }
+    if (scene == INGAME_ID) {
+        createSystem("apply_pattern");
+        createSystem("bound_hitbox");
+        createSystem("deal_damage");
+        createSystem("movement2");
+        createSystem("animate");
+        createSystem("parallax_sys");
+    }
+}
+
+void RtypeClient::setEntities(int scene) {
+    int var = MENU_BEGIN;
+    if (scene == MENU_ID) {
+        addConfig("./client/assets/menu/menu.toml");
+        addConfig("./client/assets/buttons/buttonstart.toml");
+        addConfig("./client/assets/buttons/buttonquit.toml");
+        createComponent("window", SYSTEM_ENTITY);
+        createEntity(var++, "menu", {0.f, 0.f});
+        createEntity(var++, "buttonstart", {500.f, 250.f});
+        createEntity(var++, "buttonquit", {500.f, 400.f});
+    }
+    if (scene == INGAME_ID) {
+        addConfig("./config/entities/client_player.toml");
+
+        // BACKGROUND
+        addConfig("./client/assets/background/config.toml");
+
+        // MOBS
+        addConfig("./config/entities/enemy1.toml");
+        addConfig("./client/assets/enemies/basic/enemy1.toml");
+        addConfig("./config/entities/enemy2.toml");
+        addConfig("./client/assets/enemies/basic/enemy2.toml");
+    }
 }
 
 RtypeClient::~RtypeClient() {
@@ -166,16 +186,20 @@ void RtypeClient::waitGame() {
         pollEvent();
         auto events = getEvents();
 
-        // TEMPORAIRE : Appuyer sur P pour envoyer WANT_START (test)
-        if (events.keys.UniversalKey[te::event::P]) {
+        if (isEvent(te::event::System::ChangeScene)) {
             std::cout
                 << "[Client] P pressed - Sending WANT_START (test mode)\n";
+            for (int i = static_cast<int>(MENU_BEGIN);
+            i <= static_cast<int>(MENU_BEGIN + 2); i++) {
+                removeEntity(i);
+            }
+            setECS(INGAME_ID);
+            setEntities(INGAME_ID);
             sendWantStart();
+            setSystemEvent(te::event::System::ChangeScene, false);
         }
 
-        // TODO(ETHAN):
-        // Ajouter ici la logique pour afficher et gérer le bouton "Ready"
-        // et appeler sendWantStart quand il clique sur le bouton
+        emit();
 
         runSystems();
     }
