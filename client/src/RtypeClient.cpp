@@ -34,9 +34,6 @@ RtypeClient::RtypeClient(const std::string& protocol, uint16_t port,
     , _client(protocol)
     , _server_port(port)
     , _server_ip(server_ip) {
-    setECS(MENU_ID);
-
-    setEntities(MENU_ID);
 
     registerProtocolHandlers();
     _client.setConnectCallback([this]() {
@@ -52,43 +49,43 @@ RtypeClient::RtypeClient(const std::string& protocol, uint16_t port,
     });
 }
 
-void RtypeClient::setECS(int scene) {
-    if (scene == MENU_ID) {
-        createSystem("draw");
-        createSystem("display");
-    }
-    if (scene == INGAME_ID) {
-        createSystem("apply_pattern");
-        createSystem("bound_hitbox");
-        createSystem("deal_damage");
-        createSystem("movement2");
-        createSystem("animate");
-        createSystem("parallax_sys");
-    }
+void RtypeClient::setECS(void) {
+    createSystem("apply_pattern");
+    createSystem("bound_hitbox");
+    createSystem("deal_damage");
+    createSystem("movement2");
+    createSystem("animate");
+    createSystem("draw");
+    createSystem("parallax_sys");
+    createSystem("display");
+}
+
+void RtypeClient::setConfig(void) {
+    // MENU
+    addConfig("./client/assets/menu/menu.toml");
+    addConfig("./client/assets/buttons/buttonstart.toml");
+    addConfig("./client/assets/buttons/buttonquit.toml");
+
+    // PLAYER
+    addConfig("./config/entities/player.toml");
+    addConfig("./client/assets/player/player.toml");
+
+    // BACKGROUND
+    addConfig("./client/assets/background/config.toml");
+
+    // MOBS
+    addConfig("./config/entities/enemy1.toml");
+    addConfig("./client/assets/enemies/basic/enemy1.toml");
+    addConfig("./config/entities/enemy2.toml");
+    addConfig("./client/assets/enemies/basic/enemy2.toml");
 }
 
 void RtypeClient::setEntities(int scene) {
-    int var = MENU_BEGIN;
     if (scene == MENU_ID) {
-        addConfig("./client/assets/menu/menu.toml");
-        addConfig("./client/assets/buttons/buttonstart.toml");
-        addConfig("./client/assets/buttons/buttonquit.toml");
-        createComponent("window", SYSTEM_ENTITY);
+        int var = MENU_BEGIN;
         createEntity(var++, "menu", {0.f, 0.f});
         createEntity(var++, "buttonstart", {500.f, 250.f});
         createEntity(var++, "buttonquit", {500.f, 400.f});
-    }
-    if (scene == INGAME_ID) {
-        addConfig("./config/entities/client_player.toml");
-
-        // BACKGROUND
-        addConfig("./client/assets/background/config.toml");
-
-        // MOBS
-        addConfig("./config/entities/enemy1.toml");
-        addConfig("./client/assets/enemies/basic/enemy1.toml");
-        addConfig("./config/entities/enemy2.toml");
-        addConfig("./client/assets/enemies/basic/enemy2.toml");
     }
 }
 
@@ -120,17 +117,13 @@ void RtypeClient::run() {
             return;
         }
 
-        std::cout << "[Client] Connected! Loading entities...\n";
-
-        createEntity(10, "bg1");
-        createEntity(11, "bg2");
-        createEntity(12, "bg3");
-        createEntity(13, "bg4");
-        createEntity(14, "bg5");
-        createEntity(15, "bg6");
-
         std::cout << "[Client] Connected! Waiting for game to start...\n";
         std::cout << "[Client] Press Ctrl+C to disconnect\n";
+
+        setECS();
+        setConfig();
+        createComponent("window", SYSTEM_ENTITY);
+        setEntities(MENU_ID);
 
         while (!isEvent(te::event::System::Closed) && isConnected()) {
             if (getGameState() == GAME_WAITING || getGameState() == IN_GAME) {
@@ -193,8 +186,6 @@ void RtypeClient::waitGame() {
             i <= static_cast<int>(MENU_BEGIN + 2); i++) {
                 removeEntity(i);
             }
-            setECS(INGAME_ID);
-            setEntities(INGAME_ID);
             sendWantStart();
             setSystemEvent(te::event::System::ChangeScene, false);
         }
@@ -210,7 +201,12 @@ void RtypeClient::runGame() {
     auto lastUpdate = std::chrono::steady_clock::now();
     auto lastPing = std::chrono::steady_clock::now();
 
-    createEntity(_my_entity_id.value(), "player", {0, 0});
+    createEntity(_nextMap++, "bg1");
+    createEntity(_nextMap++, "bg2");
+    createEntity(_nextMap++, "bg3");
+    createEntity(_nextMap++, "bg4");
+    createEntity(_nextMap++, "bg5");
+    createEntity(_nextMap++, "bg6");
 
     while (!isEvent(te::event::System::Closed) && isConnected()
            && getGameState() == IN_GAME) {
@@ -236,13 +232,7 @@ void RtypeClient::runGame() {
 
         pollEvent();
         auto events = getEvents();
-
-        if ((events.keys.UniversalKey[te::event::Up]
-            || events.keys.UniversalKey[te::event::Left]
-            || events.keys.UniversalKey[te::event::Down]
-            || events.keys.UniversalKey[te::event::Right])) {
-            sendEvent(events);
-        }
+        sendEvent(events);
 
         if (events.keys.UniversalKey[te::event::Space])
             sendShoot();
@@ -250,6 +240,7 @@ void RtypeClient::runGame() {
         if (_my_entity_id.has_value()) {
             emit(_my_entity_id);
         }
+        playersAnimation();
 
         runSystems();
     }
@@ -630,7 +621,9 @@ void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
             std::cout << "deleted projectile\n";
         }
     }
-}void RtypeClient::handlePlayersData(const std::vector<uint8_t>& data) {
+}
+
+void RtypeClient::handlePlayersData(const std::vector<uint8_t>& data) {
     size_t size = data.size();
     if (size == 0)
         return;
@@ -638,21 +631,32 @@ void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
 
     std::vector<bool> present(
         (EntityField::PLAYER_END - EntityField::PLAYER_BEGIN), false);
+    auto& velocities = getComponent<addon::physic::Velocity2>();
+    auto& positions = getComponent<addon::physic::Position2>();
+    auto& healths = getComponent<addon::eSpec::Health>();
 
 
     while (follow + sizeof(size_t) + 2 * sizeof(float) + sizeof(int64_t)
         <= size) {
         size_t entity = extractSizeT(data, follow);
         follow += sizeof(size_t);
-        float x = extractFloat(data, follow);
+        float posX = extractFloat(data, follow);
         follow += sizeof(float);
-        float y = extractFloat(data, follow);
+        float posY = extractFloat(data, follow);
+        follow += sizeof(float);
+        float velX = extractFloat(data, follow);
+        follow += sizeof(float);
+        float velY = extractFloat(data, follow);
         follow += sizeof(float);
         int64_t hp = extractInt64(data, follow);
         follow += sizeof(int64_t);
 
         if (entity < EntityField::PLAYER_BEGIN ||
-            entity >= EntityField::PLAYER_END)
+            entity >= EntityField::PLAYER_END ||
+            entity >= velocities.size() ||
+            entity >= positions.size() ||
+            entity >= healths.size()
+        )
             continue;
 
         present[entity - EntityField::PLAYER_BEGIN] = true;
@@ -662,50 +666,24 @@ void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
         //     // recaler myplayer
         // }
 
-        if (entity >= getComponent<addon::physic::Position2>().size() ||
-            !getComponent<addon::physic::Position2>()[entity].has_value()) {
+        if (!velocities[entity].has_value() ||
+            !positions[entity].has_value() ||
+            !healths[entity].has_value()) {
             _nextPlayer++;
-            createEntity(entity, "player", {0, 0});
-
-            std::cout <<
-            "[Client] Created OTHER player entity: entity=" <<
-                entity << " -> entity=" << entity
-                << " at position (" << x << ", " << y << ")\n";
+            createEntity(entity, "player", {posX, posY});
         } else {
-            auto& positions = getComponent<addon::physic::Position2>();
-            positions[entity].value().x = x;
-            positions[entity].value().y = y;
-
-            // std::cout <<
-            //     "[Client] Updated OTHER player entity entity=" << entity
-            //     << " (entity=" << entity
-            //     << ") to position (" << x << ", " << y << ")\n";
-        }
-
-        auto& healths = getComponent<addon::eSpec::Health>();
-        if (healths[entity].has_value()) {
+            velocities[entity].value().x = velX;
+            velocities[entity].value().y = velY;
             healths[entity].value().amount = hp;
-
-            // std::cout <<
-            //     "[Client] Updated OTHER player entity entity="
-            //     << entity
-            //     << " (entity=" << entity << ") to health ("
-            //     << hp << ")\n";
-        } else {
-            std::cout <<
-                "[Client] ERROR: Cannot update health for entity="
-                << entity
-                << " (healths.size()=" << healths.size() << ")\n";
+            positions[entity].value().x = posX;
+            positions[entity].value().y = posY;
         }
     }
-
-    // A mettre avant la boucle + enlever celui dedans pour l'opti ?
-    auto& positions = getComponent<addon::physic::Position2>();
 
     // Delete absent players
     for (size_t idx = EntityField::PLAYER_BEGIN;
         idx < EntityField::PLAYER_END; idx++) {
-        if (!positions[idx].has_value())
+        if (!velocities[idx].has_value())
             continue;
         if (!present[idx - EntityField::PLAYER_BEGIN]) {
             removeEntity(idx);
@@ -719,7 +697,6 @@ void RtypeClient::handleGameStarted(const std::vector<uint8_t>& data) {
 
     if (_my_entity_id.has_value()) {
         createEntity(_my_entity_id.value(), "player", {0, 0});
-        std::cout << "created PAYER\n\n\n";
     }
 }
 

@@ -38,7 +38,8 @@ class RtypeClient : public Game {
     std::chrono::_V2::steady_clock::time_point getPing();
     void setPing(std::chrono::_V2::steady_clock::time_point);
 
-    void setECS(int scene);
+    void setECS(void);
+    void setConfig(void);
     void setEntities(int scene);
 
     #define FPS 60

@@ -394,15 +394,15 @@ void RtypeServer::handleUserEvent(const std::vector<uint8_t>& data,
 }
 
 void RtypeServer::processEntitiesEvents() {
-    auto& velocities = getComponent<addon::physic::Velocity2>();
-    for (const auto& [addr, entity_id] : _client_entities) {
-        if (entity_id < velocities.size()
-            && velocities[entity_id].has_value()) {
-            auto& vel = velocities[entity_id].value();
-            vel.x = 0.0;
-            vel.y = 0.0;
-        }
-    }
+    // auto& velocities = getComponent<addon::physic::Velocity2>();
+    // for (const auto& [addr, entity_id] : _client_entities) {
+    //     if (entity_id < velocities.size()
+    //         && velocities[entity_id].has_value()) {
+    //         auto& vel = velocities[entity_id].value();
+    //         vel.x = 0.0;
+    //         vel.y = 0.0;
+    //     }
+    // }
 
     for (auto& [entity_id, events] : _entity_events) {
         setEvents(events);
@@ -531,9 +531,11 @@ void RtypeServer::sendPlayersData() {
     packet.push_back(ProtocolCode::PLAYERS_DATA);
 
     auto& positions = getComponent<addon::physic::Position2>();
+    auto& velocities = getComponent<addon::physic::Velocity2>();
     auto& healths = getComponent<addon::eSpec::Health>();
 
-    for (auto &&[entity, pos, hp] : ECS::IndexedZipper(positions, healths)) {
+    for (auto &&[entity, pos, vel, hp] :
+        ECS::IndexedZipper(positions, velocities, healths)) {
         if (entity < EntityField::PLAYER_BEGIN ||
             entity > EntityField::PLAYER_END)
             continue;
@@ -541,10 +543,9 @@ void RtypeServer::sendPlayersData() {
         append(packet, entity);
         append(packet, pos.x);
         append(packet, pos.y);
+        append(packet, vel.x);
+        append(packet, vel.y);
         append(packet, hp.amount);
-
-        std::cout << "  - Player " << entity << " at (" << pos.x << ", "
-            << pos.y << ") , " << hp.amount << "hp" << "\n";
     }
     _server.broadcastToAll(packet);
 }
