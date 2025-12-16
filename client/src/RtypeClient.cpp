@@ -50,6 +50,8 @@ RtypeClient::RtypeClient(const std::string& protocol, uint16_t port,
     addConfig("./client/assets/enemies/basic/enemy1.toml");
     addConfig("./config/entities/enemy2.toml");
     addConfig("./client/assets/enemies/basic/enemy2.toml");
+    addConfig("./config/entities/enemy3.toml");
+    addConfig("./client/assets/enemies/basic/enemy3.toml");
 
     registerProtocolHandlers();
     _client.setConnectCallback([this]() {
@@ -179,6 +181,8 @@ void RtypeClient::runGame() {
     auto lastUpdate = std::chrono::steady_clock::now();
     auto lastPing = std::chrono::steady_clock::now();
 
+    createEntity(_my_entity_id.value(), "player", {0, 0});
+
     while (!isEvent(te::event::System::Closed) && isConnected()
            && getGameState() == IN_GAME) {
         auto now = std::chrono::steady_clock::now();
@@ -204,18 +208,18 @@ void RtypeClient::runGame() {
         pollEvent();
         auto events = getEvents();
 
-        if ((events.keys.UniversalKey[te::event::Z]
-            || events.keys.UniversalKey[te::event::Q]
-            || events.keys.UniversalKey[te::event::S]
-            || events.keys.UniversalKey[te::event::D])) {
+        if ((events.keys.UniversalKey[te::event::Up]
+            || events.keys.UniversalKey[te::event::Left]
+            || events.keys.UniversalKey[te::event::Down]
+            || events.keys.UniversalKey[te::event::Right])) {
             sendEvent(events);
         }
 
         if (events.keys.UniversalKey[te::event::Space])
             sendShoot();
 
-        if (_my_client_entity_id.has_value()) {
-            emit(_my_client_entity_id);
+        if (_my_entity_id.has_value()) {
+            emit(_my_entity_id);
         }
 
         runSystems();
@@ -377,18 +381,12 @@ void RtypeClient::handleConnectionAccepted(const std::vector<uint8_t>& data) {
         return;
     }
 
-    uint32_t entity_id = extractUint32(data, 0);
-    _my_server_entity_id = entity_id;
+    size_t entity_id = extractSizeT(data, 0);
+    _nextPlayer++;
+    _my_entity_id = entity_id;
 
     std::cout << "[Client] Connection accepted! Our server entity ID: "
         << entity_id << "\n";
-
-    // Create our player entity locally
-    uint32_t client_id = next_entity_id++;
-    _my_client_entity_id = client_id;
-
-    std::cout << "[Client] Created local player entity: server_id="
-        << entity_id << " -> client_id=" << client_id << "\n";
 
     // Mettre le jeu en mode attente
     setGameState(GAME_WAITING);
@@ -463,6 +461,8 @@ int64_t RtypeClient::extractInt64(const std::vector<uint8_t>& data,
 
 void RtypeClient::handleEnnemiesData(const std::vector<uint8_t>& data) {
     size_t size = data.size();
+    if (size == 0)
+        return;
     size_t follow = 0;
 
     std::vector<bool> present(
@@ -494,6 +494,8 @@ void RtypeClient::handleEnnemiesData(const std::vector<uint8_t>& data) {
             auto& positions = getComponent<addon::physic::Position2>();
             positions[entity].value().x = x;
             positions[entity].value().y = y;
+            std::cout << "[Client] Updated enemy entity: entity="
+                << entity << " -> pos (" << x << ", " << y << ")\n";
         }
     }
 
@@ -516,6 +518,8 @@ void RtypeClient::handleEnnemiesData(const std::vector<uint8_t>& data) {
 
 void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
     size_t size = data.size();
+    if (size == 0)
+        return;
     size_t follow = 0;
 
     std::vector<bool> present(
@@ -586,6 +590,8 @@ void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
     }
 }void RtypeClient::handlePlayersData(const std::vector<uint8_t>& data) {
     size_t size = data.size();
+    if (size == 0)
+        return;
     size_t follow = 0;
 
     std::vector<bool> present(
@@ -609,8 +615,8 @@ void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
 
         present[entity - EntityField::PLAYER_BEGIN] = true;
 
-        // if (_my_server_entity_id.has_value()
-        //     && entity == _my_server_entity_id.value()) {
+        // if (_my_entity_id.has_value()
+        //     && entity == _my_entity_id.value()) {
         //     // recaler myplayer
         // }
 
@@ -668,8 +674,11 @@ void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
 
 void RtypeClient::handleGameStarted(const std::vector<uint8_t>& data) {
     Game::setGameState(Game::IN_GAME);
-    if (_my_client_entity_id.has_value())
-        createEntity(_my_client_entity_id.value(), "player", {0, 0});
+
+    if (_my_entity_id.has_value()) {
+        createEntity(_my_entity_id.value(), "player", {0, 0});
+        std::cout << "created PAYER\n\n\n";
+    }
 }
 
 void RtypeClient::handleGameEnded(const std::vector<uint8_t>& data) {

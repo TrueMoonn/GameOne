@@ -45,6 +45,9 @@ RtypeServer::RtypeServer(uint16_t port,
     registerProtocolHandlers();
 
     addConfig("config/entities/player.toml");
+    addConfig("config/entities/enemy1.toml");
+    addConfig("config/entities/enemy2.toml");
+    addConfig("config/entities/enemy3.toml");
     addConfig("config/entities/boundaries.toml");
 
     createSystem("movement2");
@@ -191,14 +194,6 @@ void RtypeServer::runGame() {
             lastPlayersUpdate = now;
         }
 
-        if (elapsed >= (1000.0f * TIME_ENNEMY_SPAWN)) {
-            spawnEnnemyEntity(waveNb);
-            lastEnnemyWave = now;
-            waveNb++;
-            if (waveNb >= NB_WAVES)
-                waveNb = 0;
-        }
-
         // Refresh ennemies
         elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
             now - lastEnnemiesUpdate).count();
@@ -218,8 +213,12 @@ void RtypeServer::runGame() {
         // Spawn ennemy waves
         elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
             now - lastEnnemyWave).count();
-        if (elapsed >= 1000.0f * TIME_ENNEMY_SPAWN) {
-            spawnEnnemyEntity(0);
+        if (elapsed >= (1000.0f * TIME_ENNEMY_SPAWN)) {
+            spawnEnnemyEntity(waveNb);
+            lastEnnemyWave = now;
+            waveNb++;
+            if (waveNb >= NB_WAVES)
+                waveNb = 0;
         }
     }
     std::cout << "[Server] Game loop ended." << std::endl;
@@ -299,7 +298,7 @@ void RtypeServer::sendConnectionAccepted(const net::Address& client,
     std::vector<uint8_t> packet;
 
     packet.push_back(CONNECTION_ACCEPTED);
-    append(packet, static_cast<uint32_t>(entity_id));
+    append(packet, entity_id);
     _server.sendTo(client, packet);
 }
 
@@ -477,6 +476,8 @@ void RtypeServer::sendEnnemySpawn(size_t waveNb) {
 void RtypeServer::sendEnnemiesData() {
     if (_server.getClientCount() == 0)
         return;
+
+    std::cout << "Sending ennemies\n";
 
     std::vector<uint8_t> packet;
     packet.push_back(ProtocolCode::ENNEMIES_DATA);
