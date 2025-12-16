@@ -22,6 +22,9 @@ typedef std::vector<Entity> wave;
 
 static const std::vector<wave> WAVES {
     {
+        {"enemy2", {1280, 360}}
+    },
+    {
         // === PART ONE ===
         {"enemy1", {1550, 10}},
         {"enemy1", {1550, 500}},
@@ -44,10 +47,13 @@ static const std::vector<wave> WAVES {
         {"enemy1", {1800, 400}}
     },
     {
-        {"enemy2", {1280, 360}}
-    },
-    {
-        {"enemy2", {1280, 360}}
+        {"enemy3", {1500, 200}},
+        {"enemy3", {1460, 250}},
+        {"enemy3", {1420, 300}},
+        {"enemy3", {1380, 350}},
+        {"enemy3", {1420, 400}},
+        {"enemy3", {1460, 450}},
+        {"enemy3", {1500, 500}},
     }
 };
 
