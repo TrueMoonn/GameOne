@@ -6,10 +6,6 @@
 ** Copyright [2025] <DeepestDungeonGroup>
 */
 
-#include "ECS/Entity.hpp"
-#include "ECS/Zipper.hpp"
-#include "Game.hpp"
-#include "physic/components/velocity.hpp"
 #include <arpa/inet.h>
 #include <algorithm>
 #include <array>
@@ -21,6 +17,10 @@
 #include <csignal>
 #include <vector>
 #include <unordered_map>
+#include "ECS/Entity.hpp"
+#include "ECS/Zipper.hpp"
+#include "Game.hpp"
+#include "physic/components/velocity.hpp"
 #include <physic/components/position.hpp>
 #include <display/components/animation.hpp>
 #include <entity_spec/components/health.hpp>
