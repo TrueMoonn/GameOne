@@ -137,7 +137,6 @@ void RtypeServer::run() {
 }
 
 void RtypeServer::waitGame() {
-    const float deltaTime = 1.0f / FPS;
     auto lastUpdate = std::chrono::steady_clock::now();
 
     while (g_running && getGameState() == GAME_WAITING) {
@@ -146,37 +145,65 @@ void RtypeServer::waitGame() {
             std::chrono::duration_cast<std::chrono::milliseconds>(
             now - lastUpdate).count();
 
-        if (elapsed >= (1000.0f / FPS)) {
-            update(deltaTime);
+        if (elapsed >= UPDATES_TIME) {
+            update(0.0f);
             lastUpdate = now;
         }
     }
 }
 
 void RtypeServer::runGame() {
-    const float deltaTime = 1.0f / FPS;
     auto lastUpdate = std::chrono::steady_clock::now();
     auto lastEnnemyWave = std::chrono::steady_clock::now();
+    auto lastPlayersUpdate = std::chrono::steady_clock::now();
+    auto lastEnnemiesUpdate = std::chrono::steady_clock::now();
+    auto lastProjectileUpdate = std::chrono::steady_clock::now();
 
     std::cout << "[Server] Game started! Running game loop..." << std::endl;
 
     spawnEnnemyEntity(1);
     while (g_running && getGameState() == IN_GAME) {
-        auto now = std::chrono::steady_clock::now();
-        auto elapsed =
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-            now - lastUpdate).count();
+        if (getGameState() != IN_GAME)
+            break;
 
-        if (elapsed >= (1000.0f / FPS)) {
-            update(deltaTime);
+        auto now = std::chrono::steady_clock::now();
+
+        // Update game
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - lastUpdate).count();
+        if (elapsed >= UPDATES_TIME) {
+            update(0.0f);
             lastUpdate = now;
         }
 
-        elapsed =
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-            now - lastEnnemyWave).count();
+        // Refresh players
+        elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - lastPlayersUpdate).count();
+        if (elapsed >= REFRESH_PLAYERS_TIME) {
+            sendPlayersData();
+            lastPlayersUpdate = now;
+        }
 
-        if (elapsed >= (1000.0f * TIME_ENNEMY_SPAWN)) {
+        // Refresh ennemies
+        elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - lastEnnemiesUpdate).count();
+        if (elapsed >= REFRESH_ENNEMIES_TIME) {
+            sendEnnemiesData();
+            lastEnnemiesUpdate = now;
+        }
+
+        // Refresh projectiles
+        elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - lastProjectileUpdate).count();
+        if (elapsed >= REFRESH_PROJECTILE_TIME) {
+            sendProjectilesData();
+            lastProjectileUpdate = now;
+        }
+
+        // Spawn ennemy waves
+        elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - lastEnnemyWave).count();
+        if (elapsed >= 1000.0f * TIME_ENNEMY_SPAWN) {
             spawnEnnemyEntity(0);
             lastEnnemyWave = now;
         }
@@ -211,14 +238,8 @@ void RtypeServer::generatePlayerHitbox() {
 
 void RtypeServer::update(float delta_time) {
     _server.update(delta_time);
-    // Broadcast entity state every X ms
     if (getGameState() != IN_GAME)
         return;
-    _state_broadcast_timer += delta_time;
-    if (_state_broadcast_timer >= 0.01f) {
-        sendPlayersStates();
-        _state_broadcast_timer = 0.0f;
-    }
 }
 
 void RtypeServer::registerProtocolHandlers() {
@@ -414,7 +435,8 @@ std::string RtypeServer::addressToString(const net::Address& addr) const {
 }
 
 void RtypeServer::spawnEnnemyEntity(size_t waveNb) {
-    createMobWave(waveNb);
+    _nextEnnemyE = createMobWave(waveNb,
+        _nextEnnemyE, EntityField::ENEMIES_END);
     sendEnnemySpawn(waveNb);
 }
 
@@ -443,60 +465,77 @@ void RtypeServer::sendEnnemySpawn(size_t waveNb) {
     _server.broadcastToAll(packet);
 }
 
-void RtypeServer::sendEntityState() {
+void RtypeServer::sendEnnemiesData() {
     if (_server.getClientCount() == 0)
         return;
 
     std::vector<uint8_t> packet;
-    packet.push_back(ENTITIES_STATES);
+    packet.push_back(ProtocolCode::ENNEMIES_DATA);
 
     auto& positions = getComponent<addon::physic::Position2>();
 
     for (auto &&[entity, pos] : ECS::IndexedZipper(positions)) {
-        auto isPlayer = std::find_if(_players.begin(), _players.end(),
-            [entity](const std::pair<size_t, PLAYER_STATE>& p) {
-                return p.first == entity;
-            });
-        if (isPlayer != _players.end())
+        if (entity < EntityField::ENEMIES_BEGIN ||
+            entity > EntityField::ENEMIES_END)
             continue;
 
-        append(packet, static_cast<uint32_t>(entity));
+        append(packet, entity);
         append(packet, pos.x);
         append(packet, pos.y);
 
-        std::cout << "  - Entity " << entity << " at (" << pos.x << ", "
+        std::cout << "  - Ennemy " << entity << " at (" << pos.x << ", "
             << pos.y << ")" << "\n";
     }
     _server.broadcastToAll(packet);
 }
 
-void RtypeServer::sendPlayersStates() {
+void RtypeServer::sendProjectilesData() {
     if (_server.getClientCount() == 0)
         return;
 
     std::vector<uint8_t> packet;
-    packet.push_back(PLAYERS_STATES);
+    packet.push_back(ProtocolCode::PROJECTILES_DATA);
+
+    auto& positions = getComponent<addon::physic::Position2>();
+
+    for (auto &&[entity, pos] : ECS::IndexedZipper(positions)) {
+        if (entity < EntityField::PROJECTILES_BEGIN ||
+            entity > EntityField::PROJECTILES_END)
+            continue;
+
+        append(packet, entity);
+        append(packet, pos.x);
+        append(packet, pos.y);
+
+        std::cout << "  - Projectile " << entity << " at (" << pos.x << ", "
+            << pos.y << ")" << "\n";
+    }
+    _server.broadcastToAll(packet);
+}
+
+void RtypeServer::sendPlayersData() {
+    if (_server.getClientCount() == 0)
+        return;
+
+    std::vector<uint8_t> packet;
+    packet.push_back(ProtocolCode::PLAYERS_DATA);
 
     auto& positions = getComponent<addon::physic::Position2>();
     auto& healths = getComponent<addon::eSpec::Health>();
 
     for (auto &&[entity, pos, hp] : ECS::IndexedZipper(positions, healths)) {
-        auto isPlayer = std::find_if(_players.begin(), _players.end(),
-            [entity](const std::pair<size_t, PLAYER_STATE>& p) {
-                return p.first == entity;
-            });
-        if (isPlayer == _players.end())
+        if (entity < EntityField::PLAYER_BEGIN ||
+            entity > EntityField::PLAYER_END)
             continue;
 
-        append(packet, static_cast<uint32_t>(entity));
+        append(packet, entity);
         append(packet, pos.x);
         append(packet, pos.y);
         append(packet, hp.amount);
 
         std::cout << "  - Player " << entity << " at (" << pos.x << ", "
-            << pos.y << ", " << hp.amount << ")" << "\n";
+            << pos.y << ") , " << hp.amount << "hp" << "\n";
     }
-
     _server.broadcastToAll(packet);
 }
 
@@ -577,17 +616,14 @@ void RtypeServer::handleShoot(const std::vector<uint8_t>& data,
     if (it == _client_entities.end())
         return;
 
-    static std::size_t entity_proj = EntityField::PROJECTILES_BEGIN;
     const auto &player = getComponent<addon::intact::Player>();
     const auto &position = getComponent<addon::physic::Position2>();
 
-    if (entity_proj > EntityField::PROJECTILES_END)
-        entity_proj = EntityField::PROJECTILES_BEGIN;
+    if (_nextProjectileE > EntityField::PROJECTILES_END)
+        _nextProjectileE = EntityField::PROJECTILES_BEGIN;
     for (ECS::Entity e = 0; e < player.size() && e < position.size(); ++e) {
-        if (e == it->second && player[e].has_value() && position[e].has_value()) {
-            createEntity(entity_proj++, "projectile",
+        if (e == it->second && player[e].has_value() && position[e].has_value())
+            createEntity(_nextProjectileE++, "projectile",
                 {position[e].value().x + 10, position[e].value().y});
-        }
     }
 }
-

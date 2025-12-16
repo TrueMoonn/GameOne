@@ -30,8 +30,12 @@ class RtypeServer : public Game {
     te::network::GameServer& getServer() { return _server; }
     size_t getClientCount() const { return _server.getClientCount(); }
 
-    #define FPS 60
-    #define TIME_ENNEMY_SPAWN 15
+    #define UPDATES_TIME 10                 // milliseconds
+    #define TIME_ENNEMY_SPAWN 15            // seconds
+
+    #define REFRESH_PLAYERS_TIME 10         // milliseconds
+    #define REFRESH_ENNEMIES_TIME 500       // milliseconds
+    #define REFRESH_PROJECTILE_TIME 100     // milliseconds
 
  private:
     te::network::GameServer _server;
@@ -64,8 +68,9 @@ class RtypeServer : public Game {
     void sendErrorTooManyClients(const net::Address& client);
     void sendPong(const net::Address& client);
     void sendDisconnection(const net::Address& client);
-    void sendEntityState();  // Broadcast all entity positions
-    void sendPlayersStates();  // Broadcast all entity positions
+    void sendEnnemiesData();  // Broadcast all entity positions
+    void sendPlayersData();  // Broadcast all entity positions
+    void sendProjectilesData();  // Broadcast all entity positions
     void sendGameStart();
     void sendEnnemySpawn(size_t waveNb);
 
