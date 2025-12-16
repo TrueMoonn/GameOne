@@ -30,7 +30,7 @@
             name = "ally"
 
             [ENTITIES.projectile.velocity2]
-            x = 5.0
+            x = 200
             y = 0.0
 
             [ENTITIES.projectile.fragile]

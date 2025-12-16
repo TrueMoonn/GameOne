@@ -22,7 +22,7 @@
         layer = 0
 
         [ENTITIES.bg2.velocity2]
-        x = -0.01
+        x = -10
         y = 0
 
         [ENTITIES.bg2.parallax]
@@ -39,7 +39,7 @@
         layer = 0
 
         [ENTITIES.bg3.velocity2]
-        x = -0.03
+        x = -20
         y = 0
 
         [ENTITIES.bg3.parallax]
@@ -56,7 +56,7 @@
         layer = 0
 
         [ENTITIES.bg4.velocity2]
-        x = -0.5
+        x = -30
         y = 0
 
         [ENTITIES.bg4.parallax]
@@ -73,7 +73,7 @@
         layer = 0
 
         [ENTITIES.bg5.velocity2]
-        x = -1
+        x = -40
         y = 0
 
         [ENTITIES.bg5.parallax]
@@ -90,7 +90,7 @@
         layer = 0
 
         [ENTITIES.bg6.velocity2]
-        x = -2
+        x = -50
         y = 0
 
         [ENTITIES.bg6.parallax]
