@@ -62,7 +62,7 @@ class RtypeServer : public Game {
     void runGame();   // Boucle de jeu principale (IN_GAME)
 
     void registerProtocolHandlers();
-    void generatePlayerHitbox();
+    void generateMapBounds();
 
     void sendConnectionAccepted(const net::Address& client, size_t entity_id);
     void sendErrorTooManyClients(const net::Address& client);

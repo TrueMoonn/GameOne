@@ -53,7 +53,7 @@ RtypeServer::RtypeServer(uint16_t port,
     createSystem("movement2");
     createSystem("bound_hitbox");
 
-    generatePlayerHitbox();
+    generateMapBounds();
     _server.setClientConnectCallback([this](const net::Address& client) {
         std::cout << "[Server] Network connection from: "
                   << client.getIP() << ":" << client.getPort() << "\n";
@@ -232,7 +232,7 @@ void RtypeServer::stop() {
     _server.stop();
 }
 
-void RtypeServer::generatePlayerHitbox() {
+void RtypeServer::generateMapBounds() {
     size_t left_pannel_e = _nextMapE++;
     size_t top_pannel_e = _nextMapE++;
     size_t right_pannel_e = _nextMapE++;
