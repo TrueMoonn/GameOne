@@ -12,8 +12,9 @@ drawable = true
         [[0, 1], 1, 0, true],
         [[0, 2], 1, 0, true]
     ]
+
 [ENTITIES.rocket]
-    drawable = true
+drawable = true
     [ENTITIES.rocket.sprite]
     path = "./client/assets/player/shoot.png"
     size = [19, 6]
@@ -24,3 +25,46 @@ drawable = true
     frames = [
         [[0, 0], 2, 0.1, true]
     ]
+
+[ENTITIES.minigun]
+drawable = true
+    [ENTITIES.minigun.sprite]
+    path = "./client/assets/player/shoot.png"
+    size = [19, 6]
+    scale = [19, 6]
+    layer = 2
+
+    [ENTITIES.minigun.animation]
+    frames = [
+        [[0, 0], 2, 0.1, true]
+    ]
+
+[ENTITIES.shotgun]
+drawable = true
+    [ENTITIES.shotgun.sprite]
+    path = "./client/assets/player/shoot.png"
+    size = [19, 6]
+    scale = [25, 10]
+    layer = 2
+
+    [ENTITIES.shotgun.animation]
+    frames = [
+        [[0, 0], 2, 0.1, true]
+    ]
+
+[ENTITIES.flash]
+drawable = true
+position2 = true
+    [ENTITIES.flash.sprite]
+    path = "client/assets/player/flash.png"
+    size = [11, 19]
+    scale = [20, 40]
+    layer = 5
+
+    [ENTITIES.flash.animation]
+    frames = [
+        [[0, 0], 2, 0.025, true]
+    ]
+
+    [ENTITIES.flash.timeout]
+    duration = 0.05

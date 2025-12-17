@@ -36,3 +36,43 @@ position2 = true
     [ENTITIES.rocket.hitbox]
     width = 50.0
     height = 30.0
+
+[ENTITIES.minigun]
+position2 = true
+    [ENTITIES.minigun.damage]
+    amount = 1
+    [ENTITIES.minigun.health]
+    amount = 1
+    [ENTITIES.minigun.team]
+    name = "ally"
+
+    [ENTITIES.minigun.velocity2]
+    x = 220
+    y = 0.0
+
+    [ENTITIES.minigun.fragile]
+    priority = 1
+
+    [ENTITIES.minigun.hitbox]
+    width = 19.0
+    height = 6.0
+
+[ENTITIES.shotgun]
+position2 = true
+    [ENTITIES.shotgun.damage]
+    amount = 3
+    [ENTITIES.shotgun.health]
+    amount = 1
+    [ENTITIES.shotgun.team]
+    name = "ally"
+
+    [ENTITIES.shotgun.velocity2]
+    x = 220
+    y = 0.0
+
+    [ENTITIES.shotgun.fragile]
+    priority = 3
+
+    [ENTITIES.shotgun.hitbox]
+    width = 25.0
+    height = 10.0

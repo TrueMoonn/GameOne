@@ -49,6 +49,8 @@ std::size_t Game::createBoundaries(std::size_t begin, std::size_t end) {
     createEntity(begin++, "boundaries_bottom");
     createEntity(begin++, "kz_mob");
     createEntity(begin++, "kz_projectile_right");
+    createEntity(begin++, "kz_projectile_top");
+    createEntity(begin++, "kz_projectile_bottom");
     return begin;
 }
 

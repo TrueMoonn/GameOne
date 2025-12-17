@@ -6,9 +6,11 @@
 ** Copyright [2025] <DeepestDungeonGroup>
 */
 
+#include "Game.hpp"
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <iostream>
@@ -23,6 +25,7 @@
 #include <physic/components/velocity.hpp>
 #include <physic/systems/movement.hpp>
 #include <entity_spec/components/health.hpp>
+#include <entity_spec/components/damage.hpp>
 #include <interaction/components/player.hpp>
 #include <event/events.hpp>
 #include <ECS/Zipper.hpp>
@@ -500,8 +503,11 @@ void RtypeServer::sendProjectilesData() {
     packet.push_back(ProtocolCode::PROJECTILES_DATA);
 
     auto& positions = getComponent<addon::physic::Position2>();
+    auto& velocities = getComponent<addon::physic::Velocity2>();
+    auto& damages = getComponent<addon::eSpec::Damage>();
 
-    for (auto &&[entity, pos] : ECS::IndexedZipper(positions)) {
+    for (auto &&[entity, pos, vel, dmg] :
+        ECS::IndexedZipper(positions, velocities, damages)) {
         if (entity < EntityField::PROJECTILES_BEGIN ||
             entity >= EntityField::PROJECTILES_END)
             continue;
@@ -509,6 +515,15 @@ void RtypeServer::sendProjectilesData() {
         append(packet, entity);
         append(packet, pos.x);
         append(packet, pos.y);
+        append(packet, vel.x);
+        append(packet, vel.y);
+        if (dmg.amount == 10) {
+            append(packet, static_cast<size_t>(Weapons::ROCKET));
+        } else if (dmg.amount == 3) {
+            append(packet, static_cast<size_t>(Weapons::SHOTGUN));
+        } else {
+            append(packet, static_cast<size_t>(Weapons::MINIGUN));
+        }
 
         std::cout << "  - Projectile " << entity << " at (" << pos.x << ", "
             << pos.y << ")" << "\n";
@@ -614,6 +629,8 @@ void RtypeServer::handleWantStart(const std::vector<uint8_t>& data,
 
 void RtypeServer::handleShoot(const std::vector<uint8_t>& data,
     const net::Address& sender) {
+    Weapons weapon = static_cast<Weapons>(data[0]);
+    std::cout << weapon << std::endl;
 
     std::string addr_key = addressToString(sender);
     auto it = _client_entities.find(addr_key);
@@ -622,12 +639,32 @@ void RtypeServer::handleShoot(const std::vector<uint8_t>& data,
 
     const auto &player = getComponent<addon::intact::Player>();
     const auto &position = getComponent<addon::physic::Position2>();
+    auto &velocities = getComponent<addon::physic::Velocity2>();
 
     if (_nextProjectileE > EntityField::PROJECTILES_END)
         _nextProjectileE = EntityField::PROJECTILES_BEGIN;
     for (ECS::Entity e = 0; e < player.size() && e < position.size(); ++e) {
-        if (e == it->second && player[e].has_value() && position[e].has_value())
-            createEntity(_nextProjectileE++, "rocket",
-                {position[e].value().x + 60, position[e].value().y + 10});
+        if (e == it->second && player[e].has_value() && position[e].has_value()) {
+            if (weapon == Weapons::ROCKET) {
+                createEntity(_nextProjectileE++, "rocket",
+                    {position[e].value().x + 60, position[e].value().y + 10});
+            } else if (weapon == Weapons::MINIGUN) {
+                createEntity(_nextProjectileE, "minigun",
+                    {position[e].value().x + 60,
+                    position[e].value().y + 25});
+                if (velocities[_nextProjectileE].has_value())
+                    velocities[_nextProjectileE++].value().y +=
+                        float((rand() % 120) - 60);
+            } else {
+                for (int i = 0; i < 10; i++) {
+                    if (_nextEnnemyE > EntityField::PROJECTILES_END)
+                        _nextEnnemyE = EntityField::PROJECTILES_BEGIN;
+                    createEntity(_nextProjectileE, "shotgun",
+                        {position[e].value().x + 60, position[e].value().y + 10});
+                    velocities[_nextProjectileE].value().y += float((rand() % 200) - 100);
+                    velocities[_nextProjectileE++].value().x += float((rand() % 80) - 40);
+                }
+            }
+        }
     }
 }

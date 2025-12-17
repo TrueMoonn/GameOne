@@ -13,7 +13,7 @@ height = 50.0
 [ENTITIES.enemy1.robust]
 priority = 2
 [ENTITIES.enemy1.health]
-amount = 1
+amount = 2
 [ENTITIES.enemy1.damage]
 amount = 1
 [ENTITIES.enemy1.team]
