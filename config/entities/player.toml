@@ -17,22 +17,22 @@ position2 = true
     width = 70.0
     height = 60.0
 
-[ENTITIES.projectile]
+[ENTITIES.rocket]
 position2 = true
-    [ENTITIES.projectile.damage]
-    amount = 1
-    [ENTITIES.projectile.health]
-    amount = 1
-    [ENTITIES.projectile.team]
+    [ENTITIES.rocket.damage]
+    amount = 10
+    [ENTITIES.rocket.health]
+    amount = 10
+    [ENTITIES.rocket.team]
     name = "ally"
 
-    [ENTITIES.projectile.velocity2]
+    [ENTITIES.rocket.velocity2]
     x = 200
     y = 0.0
 
-    [ENTITIES.projectile.fragile]
-    priority = 1
+    [ENTITIES.rocket.fragile]
+    priority = 8
 
-    [ENTITIES.projectile.hitbox]
-    width = 20.0
-    height = 10.0
+    [ENTITIES.rocket.hitbox]
+    width = 50.0
+    height = 30.0

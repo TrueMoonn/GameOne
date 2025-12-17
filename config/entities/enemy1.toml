@@ -11,7 +11,7 @@ height = 50.0
 
 # SPEC
 [ENTITIES.enemy1.robust]
-priority = 10
+priority = 2
 [ENTITIES.enemy1.health]
 amount = 1
 [ENTITIES.enemy1.damage]

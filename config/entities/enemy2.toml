@@ -13,7 +13,7 @@ position2 = true
 
 # SPEC
 [ENTITIES.enemy2.robust]
-priority = 10
+priority = 4
 [ENTITIES.enemy2.health]
 amount = 1
 [ENTITIES.enemy2.damage]
