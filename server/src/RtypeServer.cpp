@@ -147,27 +147,21 @@ void RtypeServer::run() {
 }
 
 void RtypeServer::waitGame() {
-    auto lastUpdate = std::chrono::steady_clock::now();
+    te::Timestamp updateTimer(UPDATES_TIME / 1000.0f);
 
     while (g_running && getGameState() == GAME_WAITING) {
-        auto now = std::chrono::steady_clock::now();
-        auto elapsed =
-            std::chrono::duration_cast<std::chrono::milliseconds>(
-            now - lastUpdate).count();
-
-        if (elapsed >= UPDATES_TIME) {
+        if (updateTimer.checkDelay()) {
             update(0.0f);
-            lastUpdate = now;
         }
     }
 }
 
 void RtypeServer::runGame() {
-    auto lastUpdate = std::chrono::steady_clock::now();
-    auto lastEnnemyWave = std::chrono::steady_clock::now();
-    auto lastPlayersUpdate = std::chrono::steady_clock::now();
-    auto lastEnnemiesUpdate = std::chrono::steady_clock::now();
-    auto lastProjectileUpdate = std::chrono::steady_clock::now();
+    te::Timestamp updateTimer(UPDATES_TIME / 1000.0f);
+    te::Timestamp ennemyWaveTimer(static_cast<float>(TIME_ENNEMY_SPAWN));
+    te::Timestamp playersUpdateTimer(REFRESH_PLAYERS_TIME / 1000.0f);
+    te::Timestamp ennemiesUpdateTimer(REFRESH_ENNEMIES_TIME / 1000.0f);
+    te::Timestamp projectileUpdateTimer(REFRESH_PROJECTILE_TIME / 1000.0f);
     uint waveNb = 0;
 
     std::cout << "[Server] Game started! Running game loop..." << std::endl;
@@ -179,51 +173,26 @@ void RtypeServer::runGame() {
         if (getGameState() != IN_GAME)
             break;
 
-        auto now = std::chrono::steady_clock::now();
-
-        // Update game
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-            now - lastUpdate).count();
-        if (elapsed >= UPDATES_TIME) {
+        if (updateTimer.checkDelay()) {
             update(0.0f);
-
-            /// BAPTISTE FAUT QU'ON PARLE CAR JSP
             processEntitiesEvents();
             runSystems();
-
-            lastUpdate = now;
         }
 
-        // Refresh players
-        elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-            now - lastPlayersUpdate).count();
-        if (elapsed >= REFRESH_PLAYERS_TIME) {
+        if (playersUpdateTimer.checkDelay()) {
             sendPlayersData();
-            lastPlayersUpdate = now;
         }
 
-        // Refresh ennemies
-        elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-            now - lastEnnemiesUpdate).count();
-        if (elapsed >= REFRESH_ENNEMIES_TIME) {
+        if (ennemiesUpdateTimer.checkDelay()) {
             sendEnnemiesData();
-            lastEnnemiesUpdate = now;
         }
 
-        // Refresh projectiles
-        elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-            now - lastProjectileUpdate).count();
-        if (elapsed >= REFRESH_PROJECTILE_TIME) {
+        if (projectileUpdateTimer.checkDelay()) {
             sendProjectilesData();
-            lastProjectileUpdate = now;
         }
 
-        // Spawn ennemy waves
-        elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-            now - lastEnnemyWave).count();
-        if (elapsed >= (1000.0f * TIME_ENNEMY_SPAWN)) {
+        if (ennemyWaveTimer.checkDelay()) {
             spawnEnnemyEntity(waveNb);
-            lastEnnemyWave = now;
             waveNb++;
             if (waveNb >= NB_WAVES)
                 waveNb = 0;
@@ -390,16 +359,6 @@ void RtypeServer::handleUserEvent(const std::vector<uint8_t>& data,
 }
 
 void RtypeServer::processEntitiesEvents() {
-    // auto& velocities = getComponent<addon::physic::Velocity2>();
-    // for (const auto& [addr, entity_id] : _client_entities) {
-    //     if (entity_id < velocities.size()
-    //         && velocities[entity_id].has_value()) {
-    //         auto& vel = velocities[entity_id].value();
-    //         vel.x = 0.0;
-    //         vel.y = 0.0;
-    //     }
-    // }
-
     for (auto& [entity_id, events] : _entity_events) {
         setEvents(events);
         emit(entity_id);
@@ -451,7 +410,7 @@ size_t RtypeServer::spawnPlayerEntity(const net::Address& client) {
 
     std::string addr_key = addressToString(client);
     _client_entities[addr_key] = entity;
-    _players.push_back({entity, WAIT_GAME});  // Le joueur est en attente
+    _players.push_back({entity, WAIT_GAME});
     return entity;
 }
 
@@ -465,15 +424,13 @@ void RtypeServer::sendEnnemySpawn(size_t waveNb) {
 
     append(packet, waveNb);
 
-    std::cout << "Sending spawn wave : WAVE " << waveNb << "\n";
+    std::cout << "[Server] Sending spawn wave : WAVE " << waveNb << "\n";
     _server.queueBroadcast(packet);
 }
 
 void RtypeServer::sendEnnemiesData() {
     if (_server.getClientCount() == 0)
         return;
-
-    std::cout << "Sending ennemies\n";
 
     std::vector<uint8_t> packet;
     packet.push_back(ProtocolCode::ENNEMIES_DATA);
@@ -488,9 +445,6 @@ void RtypeServer::sendEnnemiesData() {
         append(packet, entity);
         append(packet, pos.x);
         append(packet, pos.y);
-
-        std::cout << "  - Ennemy " << entity << " at (" << pos.x << ", "
-            << pos.y << ")" << "\n";
     }
     _server.queueBroadcast(packet);
 }
@@ -524,9 +478,6 @@ void RtypeServer::sendProjectilesData() {
         } else {
             append(packet, static_cast<size_t>(Weapons::MINIGUN));
         }
-
-        std::cout << "  - Projectile " << entity << " at (" << pos.x << ", "
-            << pos.y << ")" << "\n";
     }
     _server.queueBroadcast(packet);
 }

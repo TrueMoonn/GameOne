@@ -299,8 +299,13 @@ void RtypeClient::sendShoot() {
         te::Timestamp(0.08f),
         te::Timestamp(2.0f),
         te::Timestamp(1.2f)};
+    static bool first_shot = true;
 
-    if (!isConnected() || !delay[_weapon].checkDelay()) {
+    if (!isConnected()) {
+        return;
+    }
+
+    if (!first_shot && !delay[_weapon].checkDelay()) {
         return;
     }
 
@@ -311,6 +316,11 @@ void RtypeClient::sendShoot() {
                 {position[_my_entity_id.value()].value().x + 70,
                 position[_my_entity_id.value()].value().y + 10});
         }
+    }
+
+    if (first_shot) {
+        first_shot = false;
+        delay[_weapon].restart();
     }
 
     // TODO(PIERRE): delay
