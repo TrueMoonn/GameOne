@@ -1,0 +1,26 @@
+[ENTITIES.enemy4]
+
+# PHYSIC
+position2 = true
+    [ENTITIES.enemy4.velocity2]
+    x = -240
+    y = 0
+    [ENTITIES.enemy4.hitbox]
+    left = 0.0
+    top = 0.0
+    width = 50.0
+    height = 50.0
+
+# SPEC
+    [ENTITIES.enemy4.robust]
+    priority = 3
+    [ENTITIES.enemy4.health]
+    amount = 15
+    [ENTITIES.enemy4.damage]
+    amount = 3
+    [ENTITIES.enemy4.team]
+    name = "mob"
+    [ENTITIES.enemy4.pattern]
+    type = 2
+    amplitude = 200
+    frequency = 1

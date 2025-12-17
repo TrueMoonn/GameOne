@@ -1,0 +1,98 @@
+[ENTITIES]
+    [ENTITIES.bg1]
+    position2 = true
+    drawable = true
+        [ENTITIES.bg1.sprite]
+        path = "client/assets/background/images/1.png"
+        size = [576, 324]
+        scale = [1280, 720]
+        layer = 0
+
+        [ENTITIES.bg1.parallax]
+        iteration = 2
+        reset = [0, 0]
+
+    [ENTITIES.bg2]
+    position2 = true
+    drawable = true
+        [ENTITIES.bg2.sprite]
+        path = "client/assets/background/images/2.png"
+        size = [576, 324]
+        scale = [1280, 720]
+        layer = 0
+
+        [ENTITIES.bg2.velocity2]
+        x = -10
+        y = 0
+
+        [ENTITIES.bg2.parallax]
+        iteration = 2
+        reset = [0, 0]
+
+    [ENTITIES.bg3]
+    position2 = true
+    drawable = true
+        [ENTITIES.bg3.sprite]
+        path = "client/assets/background/images/3.png"
+        size = [576, 324]
+        scale = [1280, 720]
+        layer = 0
+
+        [ENTITIES.bg3.velocity2]
+        x = -20
+        y = 0
+
+        [ENTITIES.bg3.parallax]
+        iteration = 2
+        reset = [0, 0]
+
+    [ENTITIES.bg4]
+    position2 = true
+    drawable = true
+        [ENTITIES.bg4.sprite]
+        path = "client/assets/background/images/4.png"
+        size = [576, 324]
+        scale = [1280, 720]
+        layer = 0
+
+        [ENTITIES.bg4.velocity2]
+        x = -30
+        y = 0
+
+        [ENTITIES.bg4.parallax]
+        iteration = 2
+        reset = [0, 0]
+
+    [ENTITIES.bg5]
+    position2 = true
+    drawable = true
+        [ENTITIES.bg5.sprite]
+        path = "client/assets/background/images/5.png"
+        size = [576, 324]
+        scale = [1280, 720]
+        layer = 0
+
+        [ENTITIES.bg5.velocity2]
+        x = -40
+        y = 0
+
+        [ENTITIES.bg5.parallax]
+        iteration = 2
+        reset = [0, 0]
+
+    [ENTITIES.bg6]
+    position2 = true
+    drawable = true
+        [ENTITIES.bg6.sprite]
+        path = "client/assets/background/images/6.png"
+        size = [576, 324]
+        scale = [1280, 720]
+        layer = 0
+
+        [ENTITIES.bg6.velocity2]
+        x = -50
+        y = 0
+
+        [ENTITIES.bg6.parallax]
+        iteration = 2
+        reset = [0, 0]

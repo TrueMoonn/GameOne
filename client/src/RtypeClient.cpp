@@ -1,0 +1,827 @@
+/*
+** EPITECH PROJECT, 2025
+** GameOne
+** File description:
+** RtypeClient.cpp
+** Copyright [2025] <DeepestDungeonGroup>
+*/
+
+#include <arpa/inet.h>
+#include <algorithm>
+#include <array>
+#include <chrono>
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
+#include <iostream>
+#include <string>
+#include <csignal>
+#include <vector>
+#include <unordered_map>
+#include "ECS/Entity.hpp"
+#include "ECS/Zipper.hpp"
+#include "Game.hpp"
+#include "clock.hpp"
+#include "physic/components/velocity.hpp"
+#include <physic/components/position.hpp>
+#include <display/components/animation.hpp>
+#include <entity_spec/components/health.hpp>
+#include <event/events.hpp>
+#include <RtypeClient.hpp>
+#include <GameTool.hpp>
+
+RtypeClient::RtypeClient(const std::string& protocol, uint16_t port,
+    const std::string& server_ip)
+    : Game("./client/plugins")
+    , _client(protocol)
+    , _server_port(port)
+    , _server_ip(server_ip) {
+    registerProtocolHandlers();
+    _client.setConnectCallback([this]() {
+        std::cout
+        << "[Client] Network connection established, "
+        << "sending CONNECTION_REQUEST...\n";
+        sendConnectionRequest();
+    });
+
+    _client.setDisconnectCallback([this]() {
+        std::cout << "[Client] Disconnected from server\n";
+        // TODO(Pierre): Cleanup local entities, return to menu, etc.
+    });
+}
+
+void RtypeClient::setECS(void) {
+    createSystem("apply_pattern");
+    createSystem("movement2");
+    createSystem("bound_hitbox");
+    createSystem("deal_damage");
+    createSystem("apply_fragile");
+    createSystem("kill_entity");
+    createSystem("animate");
+    createSystem("draw");
+    createSystem("parallax_sys");
+    createSystem("display");
+}
+
+void RtypeClient::setConfig(void) {
+    // MENU
+    addConfig("./client/assets/menu/menu.toml");
+    addConfig("./client/assets/buttons/buttonstart.toml");
+    addConfig("./client/assets/buttons/buttonquit.toml");
+
+    // MAP
+    addConfig("./client/assets/background/config.toml");
+    addConfig("./config/entities/boundaries.toml");
+
+    // PLAYER
+    addConfig("./config/entities/player.toml");
+    addConfig("./client/assets/player/player.toml");
+
+    // MOBS
+    addConfig("./config/entities/enemy1.toml");
+    addConfig("./client/assets/enemies/basic/enemy1.toml");
+    addConfig("./config/entities/enemy2.toml");
+    addConfig("./client/assets/enemies/basic/enemy2.toml");
+    addConfig("./config/entities/enemy3.toml");
+    addConfig("./client/assets/enemies/basic/enemy3.toml");
+    addConfig("./config/entities/enemy4.toml");
+    addConfig("./client/assets/enemies/basic/enemy4.toml");
+}
+
+void RtypeClient::setEntities(int scene) {
+    if (scene == MENU_ID) {
+        int var = MENU_BEGIN;
+        createEntity(var++, "menu", {0.f, 0.f});
+        createEntity(var++, "buttonstart", {500.f, 250.f});
+        createEntity(var++, "buttonquit", {500.f, 400.f});
+    }
+}
+
+RtypeClient::~RtypeClient() {
+    if (_client.isConnected()) {
+        disconnect();
+    }
+}
+
+void signalHandler(int signal) {
+    if (signal == SIGINT || signal == SIGTERM) {
+        std::cout << "\n[Client] Disconnecting...\n";
+        return;  // Throw or exit
+    }
+}
+
+void RtypeClient::run() {
+    std::cout << "=== R-Type Client ===\n";
+    std::cout << "Server: " << _server_ip << ":" << _server_port << "\n";
+    std::cout << "=====================\n";
+
+    std::signal(SIGINT, signalHandler);
+    std::signal(SIGTERM, signalHandler);
+
+    try {
+        std::cout << "[Client] Connecting to server...\n";
+        if (!connect(_server_ip, _server_port)) {
+            std::cerr << "[Client] Failed to connect to server\n";
+            return;
+        }
+
+        std::cout << "[Client] Connected! Waiting for game to start...\n";
+        std::cout << "[Client] Press Ctrl+C to disconnect\n";
+
+        setECS();
+        setConfig();
+        createComponent("window", SYSTEM_ENTITY);
+        setEntities(MENU_ID);
+
+        while (!isEvent(te::event::System::Closed) && isConnected()) {
+            if (getGameState() == GAME_WAITING || getGameState() == IN_GAME) {
+                if (getGameState() == GAME_WAITING) {
+                    waitGame();
+                } else {
+                    runGame();
+                }
+            } else if (getGameState() == GAME_ENDED) {
+                std::cout << "[Client] Game ended!\n";
+                break;
+            }
+        }
+
+        if (isConnected()) {
+            std::cout << "[Client] Disconnecting...\n";
+            disconnect();
+        }
+        std::cout << "[Client] Goodbye!\n";
+    } catch (const std::exception& e) {
+        std::cerr << "[Client] Fatal error: " << e.what() << "\n";
+        return;
+    }
+}
+
+void RtypeClient::waitGame() {
+    const float deltaTime = 1.0f / FPS;
+    auto lastUpdate = std::chrono::steady_clock::now();
+    auto lastPing = std::chrono::steady_clock::now();
+
+    while (!isEvent(te::event::System::Closed) && isConnected()
+           && getGameState() == GAME_WAITING) {
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - lastUpdate).count();
+
+        if (elapsed >= (1000.0f / FPS)) {
+            update(deltaTime);
+            lastUpdate = now;
+        }
+
+        // Send ping every 5 seconds
+        auto pingElapsed =
+            std::chrono::duration_cast<std::chrono::seconds>(
+            now - lastPing).count();
+        if (pingElapsed >= 5) {
+            std::cout << "[Client] Sending PING...\n";
+            sendPing();
+            lastPing = now;
+        }
+
+        pollEvent();
+        auto events = getEvents();
+
+        if (isEvent(te::event::System::ChangeScene)) {
+            std::cout
+                << "[Client] P pressed - Sending WANT_START (test mode)\n";
+            for (int i = static_cast<int>(MENU_BEGIN);
+            i <= static_cast<int>(MENU_BEGIN + 2); i++) {
+                removeEntity(i);
+            }
+            sendWantStart();
+            setSystemEvent(te::event::System::ChangeScene, false);
+        }
+
+        emit();
+
+        runSystems();
+    }
+}
+
+void RtypeClient::runGame() {
+    const float deltaTime = 1.0f / FPS;
+    static te::Timestamp weapon_switch(0.1f);
+    auto lastUpdate = std::chrono::steady_clock::now();
+    auto lastPing = std::chrono::steady_clock::now();
+
+    createEntity(_nextMap++, "bg1");
+    createEntity(_nextMap++, "bg2");
+    createEntity(_nextMap++, "bg3");
+    createEntity(_nextMap++, "bg4");
+    createEntity(_nextMap++, "bg5");
+    createEntity(_nextMap++, "bg6");
+    _nextMap = createBoundaries(_nextMap);
+
+    while (!isEvent(te::event::System::Closed) && isConnected()
+           && getGameState() == IN_GAME) {
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+            now - lastUpdate).count();
+
+        if (elapsed >= (1000.0f / FPS)) {
+            update(deltaTime);
+            lastUpdate = now;
+        }
+
+        // Send ping every 5 seconds
+        auto pingElapsed =
+            std::chrono::duration_cast<std::chrono::seconds>(
+            now - lastPing).count();
+        if (pingElapsed >= 5) {
+            std::cout << "[Client] Sending PING...\n";
+            sendPing();
+            lastPing = now;
+        }
+
+        pollEvent();
+        auto events = getEvents();
+        sendEvent(events);
+
+        if (events.keys.UniversalKey[te::event::Key::R]
+            && weapon_switch.checkDelay()) {
+            _weapon = static_cast<Weapons>(_weapon + 1);
+            if (_weapon >= Weapons::ENDWEAPON)
+                _weapon = MINIGUN;
+        }
+
+        if (events.keys.UniversalKey[te::event::Space])
+            sendShoot();
+
+        if (_my_entity_id.has_value()) {
+            emit(_my_entity_id);
+        }
+        playersAnimation();
+
+        runSystems();
+    }
+}
+
+void RtypeClient::playersAnimation(void) {
+    auto& velocities = getComponent<addon::physic::Velocity2>();
+    auto& animations = getComponent<addon::display::Animation>();
+
+    for (ECS::Entity e = EntityField::PLAYER_BEGIN;
+        e < EntityField::PLAYER_END; e++) {
+        if (velocities[e].has_value() && animations[e].has_value()) {
+            auto& anim = animations[e].value();
+            auto& vel = velocities[e].value();
+            anim.curAnim = vel.y > 0 ? 1 : vel.y < 0 ? 2 : 0;
+        }
+    }
+}
+
+void RtypeClient::resetGameEntities() {
+    std::cout << "[Client] Cleaning up game entities...\n";
+
+    for (ECS::Entity e = EntityField::ENEMIES_BEGIN;
+         e < EntityField::ENEMIES_END; ++e) {
+        removeEntity(e);
+    }
+
+    for (ECS::Entity e = EntityField::PROJECTILES_BEGIN;
+         e < EntityField::PROJECTILES_END; ++e) {
+        removeEntity(e);
+    }
+
+    for (ECS::Entity e = EntityField::MAP_BEGIN;
+         e < EntityField::MAP_END; ++e) {
+        removeEntity(e);
+    }
+
+    for (ECS::Entity e = EntityField::PLAYER_BEGIN;
+         e < EntityField::PLAYER_END; ++e) {
+        removeEntity(e);
+    }
+
+    _nextMap = EntityField::MAP_BEGIN;
+    _nextEnnemy = EntityField::ENEMIES_BEGIN;
+    _nextProjectile = EntityField::PROJECTILES_BEGIN;
+    _nextPlayer = EntityField::PLAYER_BEGIN;
+
+    std::cout << "[Client] Game entities cleaned up!\n";
+}
+
+std::chrono::_V2::steady_clock::time_point RtypeClient::getPing() {
+    return _pingTime;
+}
+
+void RtypeClient::setPing(std::chrono::_V2::steady_clock::time_point time) {
+    _pingTime = time;
+}
+
+void RtypeClient::sendEvent(te::event::Events events) {
+    if (!isConnected()) {
+        return;
+    }
+
+    std::vector<uint8_t> packet;
+
+    packet.push_back(CLIENT_EVENT);
+    std::vector<uint8_t> temp = net::PacketSerializer::serialize(events);
+    std::copy(temp.begin(), temp.end(), back_inserter(packet));
+    _client.send(packet);
+}
+
+void RtypeClient::sendShoot() {
+    static te::Timestamp delay[3] = {
+        te::Timestamp(0.08f),
+        te::Timestamp(2.0f),
+        te::Timestamp(1.2f)};
+    static bool first_shot = true;
+
+    if (!isConnected()) {
+        return;
+    }
+
+    if (!first_shot && !delay[_weapon].checkDelay()) {
+        return;
+    }
+
+    if (_my_entity_id.has_value()) {
+        auto& position = getComponent<addon::physic::Position2>();
+        if (position[_my_entity_id.value()].has_value()) {
+            createEntity(PROJECTILES_END + 1, "flash",
+                {position[_my_entity_id.value()].value().x + 70,
+                position[_my_entity_id.value()].value().y + 10});
+        }
+    }
+
+    if (first_shot) {
+        first_shot = false;
+        delay[_weapon].restart();
+    }
+
+    // TODO(PIERRE): delay
+    std::vector<uint8_t> packet;
+
+    packet.push_back(PLAYER_SHOT);
+    packet.push_back(static_cast<uint8_t>(_weapon));
+    _client.send(packet);
+}
+
+bool RtypeClient::connect(const std::string& ip, uint16_t port) {
+    return _client.connect(ip, port);
+}
+
+void RtypeClient::disconnect() {
+    if (_client.isConnected()) {
+        sendDisconnection();
+    }
+    _client.disconnect();
+}
+
+void RtypeClient::update(float delta_time) {
+    _client.update(delta_time);
+}
+
+void RtypeClient::registerProtocolHandlers() {
+    _client.registerPacketHandler(CONNECTION_ACCEPTED,
+        [this](const std::vector<uint8_t>& data) {
+            handleConnectionAccepted(data);
+        });
+
+    _client.registerPacketHandler(DISCONNECTION,
+        [this](const std::vector<uint8_t>& data) {
+            handleDisconnection(data);
+        });
+
+    _client.registerPacketHandler(ERROR_TOO_MANY_CLIENTS,
+        [this](const std::vector<uint8_t>& data) {
+            handleServerFull(data);
+        });
+
+    _client.registerPacketHandler(PING,
+        [this](const std::vector<uint8_t>& data) {
+            handlePing(data);
+        });
+
+    _client.registerPacketHandler(PONG,
+        [this](const std::vector<uint8_t>& data) {
+            handlePong(data);
+        });
+
+    _client.registerPacketHandler(PLAYERS_DATA,
+        [this](const std::vector<uint8_t>& data) {
+            handlePlayersData(data);
+        });
+
+    _client.registerPacketHandler(PROJECTILES_DATA,
+        [this](const std::vector<uint8_t>& data) {
+            handleProjectilesData(data);
+        });
+
+    _client.registerPacketHandler(ENNEMIES_DATA,
+        [this](const std::vector<uint8_t>& data) {
+            handleEnnemiesData(data);
+        });
+
+    _client.registerPacketHandler(GAME_START,
+        [this](const std::vector<uint8_t>& data) {
+            handleGameStarted(data);
+        });
+
+    _client.registerPacketHandler(GAME_ENDED,
+        [this](const std::vector<uint8_t>& data) {
+            handleGameEnded(data);
+        });
+
+    _client.registerPacketHandler(NEW_WAVE,
+        [this](const std::vector<uint8_t>& data) {
+            handleWaveSpawned(data);
+        });
+}
+
+void RtypeClient::sendConnectionRequest() {
+    std::vector<uint8_t> packet;
+
+    packet.push_back(CONNECTION_REQUEST);
+    _client.send(packet);
+}
+
+void RtypeClient::sendDisconnection() {
+    std::vector<uint8_t> packet;
+
+    packet.push_back(DISCONNECTION);
+    _client.send(packet);
+}
+
+void RtypeClient::sendPing() {
+    std::vector<uint8_t> packet;
+
+    setPing(std::chrono::steady_clock::now());
+    packet.push_back(PING);
+    _client.send(packet);
+}
+
+void RtypeClient::sendPong() {
+    std::vector<uint8_t> packet;
+
+    packet.push_back(PONG);
+    _client.send(packet);
+}
+
+void RtypeClient::sendWantStart() {
+    if (!isConnected()) {
+        std::cerr << "[Client] Cannot send WANT_START: not connected\n";
+        return;
+    }
+
+    std::vector<uint8_t> packet;
+    packet.push_back(WANT_START);
+
+    std::cout << "[Client] Sending WANT_START to server\n";
+    _client.send(packet);
+}
+
+void RtypeClient::handleConnectionAccepted(const std::vector<uint8_t>& data) {
+    if (data.size() < 4) {
+        std::cerr << "[Client] Invalid CONNECTION_ACCEPTED packet size\n";
+        return;
+    }
+
+    size_t entity_id = extractSizeT(data, 0);
+    _nextPlayer++;
+    _my_entity_id = entity_id;
+
+    std::cout << "[Client] Connection accepted! Our server entity ID: "
+        << entity_id << "\n";
+
+    // Mettre le jeu en mode attente
+    setGameState(GAME_WAITING);
+    std::cout << "[Client] Waiting for players to be ready...\n";
+}
+
+void RtypeClient::handleDisconnection(const std::vector<uint8_t>& data) {
+    std::cout << "[Client] Server disconnected us\n";
+}
+
+void RtypeClient::handleServerFull(const std::vector<uint8_t>& data) {
+    std::cout << "[Client] Server full!\n";
+    disconnect();  // TODO(PIERRE): On pourrait le laisser attendre
+    // ouais why not, on le deco si il fait rien trop longtemps
+}
+
+void RtypeClient::handlePing(const std::vector<uint8_t>& data) {
+    std::cout << "[Client] Ping received, sending pong...\n";
+    sendPong();
+}
+
+void RtypeClient::handlePong(const std::vector<uint8_t>& data) {
+    std::cout << "[Client] Pong received\n";
+    auto now = std::chrono::steady_clock::now();
+    auto pingElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now - getPing()).count();
+    std::cout << "Latency between sendPing and receive Pong (in ms): "
+        << pingElapsed << "\n";
+}
+
+void RtypeClient::append(std::vector<uint8_t>& vec, uint32_t value) const {
+    std::array<uint8_t, 4> bytes;
+    std::memcpy(bytes.data(), &value, 4);
+    vec.insert(vec.end(), bytes.begin(), bytes.end());
+}
+
+float RtypeClient::extractFloat(const std::vector<uint8_t>& data,
+    size_t offset) const {
+    if (offset + sizeof(float) > data.size())
+        throw TypeExtractError("Could not extract float at pos " + offset);
+    float value;
+    std::memcpy(&value, data.data() + offset, sizeof(float));
+    return value;
+}
+
+uint32_t RtypeClient::extractUint32(const std::vector<uint8_t>& data,
+    size_t offset) const {
+    if (offset + sizeof(uint32_t) > data.size())
+        throw TypeExtractError("Could not extract uint32_t at pos " + offset);
+    uint32_t value;
+    std::memcpy(&value, data.data() + offset, sizeof(uint32_t));
+    return value;
+}
+
+size_t RtypeClient::extractSizeT(const std::vector<uint8_t>& data,
+    size_t offset) const {
+    if (offset + sizeof(size_t) > data.size())
+        throw TypeExtractError("Could not extract size_t at pos " + offset);
+    size_t value;
+    std::memcpy(&value, data.data() + offset, sizeof(size_t));
+    return value;
+}
+
+int64_t RtypeClient::extractInt64(const std::vector<uint8_t>& data,
+    size_t offset) const {
+    if (offset + sizeof(int64_t) > data.size())
+        throw TypeExtractError("Could not extract int64_t at pos " + offset);
+    int64_t value;
+    std::memcpy(&value, data.data() + offset, sizeof(int64_t));
+    return value;
+}
+
+void RtypeClient::handleEnnemiesData(const std::vector<uint8_t>& data) {
+    size_t size = data.size();
+    if (size == 0)
+        return;
+    size_t follow = 0;
+
+    std::vector<bool> present(
+        (EntityField::ENEMIES_END - EntityField::ENEMIES_BEGIN), false);
+
+    while (follow + sizeof(size_t) + 2 * sizeof(float) <= size) {
+        size_t entity = extractSizeT(data, follow);
+        follow += sizeof(size_t);
+        float posx = extractFloat(data, follow);
+        follow += sizeof(float);
+        float posy = extractFloat(data, follow);
+        follow += sizeof(float);
+        float velx = extractFloat(data, follow);
+        follow += sizeof(float);
+        float vely = extractFloat(data, follow);
+        follow += sizeof(float);
+
+        if (entity < EntityField::ENEMIES_BEGIN ||
+            entity >= EntityField::ENEMIES_END)
+            continue;
+
+        present[entity - EntityField::ENEMIES_BEGIN] = true;
+
+        auto& positions = getComponent<addon::physic::Position2>();
+        auto& velocities = getComponent<addon::physic::Velocity2>();
+        if (entity < positions.size() && positions[entity].has_value()) {
+            positions[entity].value().x = posx;
+            positions[entity].value().y = posy;
+        }
+        if (entity < velocities.size() && velocities[entity].has_value()) {
+            velocities[entity].value().x = velx;
+            velocities[entity].value().y = vely;
+        }
+    }
+
+    // A mettre avant la boucle + enlever celui dedans pour l'opti ?
+    auto& positions = getComponent<addon::physic::Position2>();
+
+    // Delete absent ennemies
+    for (size_t idx = EntityField::ENEMIES_BEGIN;
+        idx < EntityField::ENEMIES_END; idx++) {
+        if (idx >= positions.size())
+            break;
+        if (!positions[idx].has_value())
+            continue;
+        if (!present[idx - EntityField::ENEMIES_BEGIN]) {
+            removeEntity(idx);
+            // std::cout << "deleted ennemy\n";  // Too verbose
+        }
+    }
+}
+
+void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
+    size_t size = data.size();
+    if (size == 0)
+        return;
+    size_t follow = 0;
+
+    std::vector<bool> present(
+        (EntityField::PROJECTILES_END - EntityField::PROJECTILES_BEGIN), false);
+
+
+    while (follow + sizeof(size_t) + 2 * sizeof(float) <= size) {
+        size_t entity = extractSizeT(data, follow);
+        follow += sizeof(size_t);
+        float posx = extractFloat(data, follow);
+        follow += sizeof(float);
+        float posy = extractFloat(data, follow);
+        follow += sizeof(float);
+        float velx = extractFloat(data, follow);
+        follow += sizeof(float);
+        float vely = extractFloat(data, follow);
+        follow += sizeof(float);
+        Weapons weapon = static_cast<Weapons>(extractSizeT(data, follow));
+        follow += sizeof(size_t);
+
+        if (entity < EntityField::PROJECTILES_BEGIN ||
+            entity >= EntityField::PROJECTILES_END) {
+            continue;
+        }
+
+        size_t idx = entity - EntityField::PROJECTILES_BEGIN;
+
+        if (idx >= present.size()) {
+            std::cerr << "[ERROR] Index " << idx
+                << " out of bounds for present vector size "
+                << present.size() << "\n";
+            continue;
+        }
+
+        present[idx] = true;
+
+        auto& positions = getComponent<addon::physic::Position2>();
+        auto& velocities = getComponent<addon::physic::Velocity2>();
+
+        if ((entity >= positions.size() || !positions[entity].has_value()) ||
+            (entity >= velocities.size() || !velocities[entity].has_value())) {
+            _nextProjectile++;
+            createEntity(entity, WEAPONS_NAMES.at(weapon));
+        }
+        if (entity < positions.size() && positions[entity].has_value()) {
+            positions[entity].value().x = posx;
+            positions[entity].value().y = posy;
+        }
+        if (entity < velocities.size() && velocities[entity].has_value()) {
+            velocities[entity].value().x = velx;
+            velocities[entity].value().y = vely;
+        }
+    }
+
+    // A mettre avant la boucle + enlever celui dedans pour l'opti ?
+    auto& positions = getComponent<addon::physic::Position2>();
+
+    // Delete absent projectiles
+    for (size_t idx = EntityField::PROJECTILES_BEGIN;
+        idx < EntityField::PROJECTILES_END; idx++) {
+        if (idx >= positions.size())
+            break;
+        if (!positions[idx].has_value())
+            continue;
+
+        size_t present_idx = idx - EntityField::PROJECTILES_BEGIN;
+        if (present_idx >= present.size()) {
+            std::cerr << "[ERROR] Cleanup: present_idx " << present_idx
+                      << " out of bounds\n";
+            continue;
+        }
+
+        if (!present[present_idx]) {
+            removeEntity(idx);
+            // std::cout << "deleted rocket\n";  // Too verbose
+        }
+    }
+}
+
+void RtypeClient::handlePlayersData(const std::vector<uint8_t>& data) {
+    size_t size = data.size();
+    if (size == 0)
+        return;
+    size_t follow = 0;
+
+    std::vector<bool> present(
+        (EntityField::PLAYER_END - EntityField::PLAYER_BEGIN), false);
+    auto& velocities = getComponent<addon::physic::Velocity2>();
+    auto& positions = getComponent<addon::physic::Position2>();
+    auto& healths = getComponent<addon::eSpec::Health>();
+
+
+    while (follow + sizeof(size_t) + 2 * sizeof(float) + sizeof(int64_t)
+        <= size) {
+        size_t entity = extractSizeT(data, follow);
+        follow += sizeof(size_t);
+        float posX = extractFloat(data, follow);
+        follow += sizeof(float);
+        float posY = extractFloat(data, follow);
+        follow += sizeof(float);
+        float velX = extractFloat(data, follow);
+        follow += sizeof(float);
+        float velY = extractFloat(data, follow);
+        follow += sizeof(float);
+        int64_t hp = extractInt64(data, follow);
+        follow += sizeof(int64_t);
+
+        if (entity < EntityField::PLAYER_BEGIN ||
+            entity >= EntityField::PLAYER_END ||
+            entity >= velocities.size() ||
+            entity >= positions.size() ||
+            entity >= healths.size()
+        )
+            continue;
+
+        present[entity - EntityField::PLAYER_BEGIN] = true;
+
+        // if (_my_entity_id.has_value()
+        //     && entity == _my_entity_id.value()) {
+        //     // recaler myplayer
+        // }
+
+        if (!velocities[entity].has_value() ||
+            !positions[entity].has_value() ||
+            !healths[entity].has_value()) {
+            _nextPlayer++;
+            std::string playerType = getPlayerTypeByEntityId(entity);
+            createEntity(entity, playerType, {posX, posY});
+        } else {
+            velocities[entity].value().x = velX;
+            velocities[entity].value().y = velY;
+            healths[entity].value().amount = hp;
+            positions[entity].value().x = posX;
+            positions[entity].value().y = posY;
+        }
+    }
+
+    // Delete absent players
+    for (size_t idx = EntityField::PLAYER_BEGIN;
+        idx < EntityField::PLAYER_END; idx++) {
+        if (!velocities[idx].has_value())
+            continue;
+        if (!present[idx - EntityField::PLAYER_BEGIN]) {
+            removeEntity(idx);
+            // std::cout << "deleted player\n";  // Too verbose
+        }
+    }
+}
+
+void RtypeClient::handleGameStarted(const std::vector<uint8_t>& data) {
+    std::cout << "[Client] Game is starting!\n";
+    Game::setGameState(Game::IN_GAME);
+
+}
+
+void RtypeClient::handleGameEnded(const std::vector<uint8_t>& data) {
+    if (data.size() < 1) {
+        std::cerr << "[Client] Invalid GAME_ENDED packet\n";
+        Game::setGameState(Game::GAME_ENDED);
+        return;
+    }
+
+    bool victory = (data[0] == 1);
+
+    std::cout << "\n╔═══════════════════════════════════════╗\n";
+    if (victory) {
+        std::cout << "║           VICTORY!                    ║\n";
+        std::cout << "║  You defeated all enemies! Well done! ║\n";
+    } else {
+        std::cout << "║           DEFEAT!                     ║\n";
+        std::cout << "║     All players have been defeated    ║\n";
+    }
+    std::cout << "╚═══════════════════════════════════════╝\n\n";
+
+    Game::setGameState(Game::GAME_ENDED);
+}
+
+void RtypeClient::handleWaveSpawned(const std::vector<uint8_t>& data) {
+    size_t waveNb = extractSizeT(data, 0);
+
+    std::cout << "[Client] Spawning wave " << waveNb
+              << " starting at entity " << _nextEnnemy << "\n";
+    _nextEnnemy = createMobWave(waveNb, _nextEnnemy, EntityField::ENEMIES_END);
+    std::cout << "[Client] Wave " << waveNb
+              << " spawned, next enemy slot: " << _nextEnnemy << "\n";
+}
+
+std::string RtypeClient::getPlayerTypeByEntityId(size_t entity_id) const {
+    size_t player_index = entity_id - EntityField::PLAYER_BEGIN;
+    size_t player_number = (player_index % 4) + 1;
+
+    if (player_number == 1) {
+        return "player1";
+    } else if (player_number == 2) {
+        return "player2";
+    } else if (player_number == 3) {
+        return "player3";
+    } else {
+        return "player4";
+    }
+}

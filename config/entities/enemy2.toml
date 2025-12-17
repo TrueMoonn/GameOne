@@ -1,0 +1,22 @@
+[ENTITIES.enemy2]
+
+# PHYSIC
+position2 = true
+[ENTITIES.enemy2.velocity2]
+    x = -120
+    y = 0
+[ENTITIES.enemy2.hitbox]
+    left = 0.0
+    top = 0.0
+    width = 50.0
+    height = 50.0
+
+# SPEC
+[ENTITIES.enemy2.robust]
+    priority = 4
+[ENTITIES.enemy2.health]
+    amount = 4
+[ENTITIES.enemy2.damage]
+    amount = 1
+[ENTITIES.enemy2.team]
+    name = "mob"

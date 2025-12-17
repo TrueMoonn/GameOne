@@ -1,0 +1,157 @@
+[ENTITIES.player]
+player = true
+movable = true
+position2 = true
+    [ENTITIES.player.health]
+    amount = 5
+    [ENTITIES.player.damage]
+    amount = 2
+    [ENTITIES.player.team]
+    name = "ally"
+
+    [ENTITIES.player.velocity2]
+    x = 0.0
+    y = 0.0
+
+    [ENTITIES.player.hitbox]
+    width = 70.0
+    height = 60.0
+
+[ENTITIES.player1]
+player = true
+movable = true
+position2 = true
+    [ENTITIES.player1.health]
+    amount = 5
+    [ENTITIES.player1.damage]
+    amount = 2
+    [ENTITIES.player1.team]
+    name = "ally"
+
+    [ENTITIES.player1.velocity2]
+    x = 0.0
+    y = 0.0
+
+    [ENTITIES.player1.hitbox]
+    width = 70.0
+    height = 60.0
+
+[ENTITIES.player2]
+player = true
+movable = true
+position2 = true
+    [ENTITIES.player2.health]
+    amount = 5
+    [ENTITIES.player2.damage]
+    amount = 2
+    [ENTITIES.player2.team]
+    name = "ally"
+
+    [ENTITIES.player2.velocity2]
+    x = 0.0
+    y = 0.0
+
+    [ENTITIES.player2.hitbox]
+    width = 70.0
+    height = 60.0
+
+[ENTITIES.player3]
+player = true
+movable = true
+position2 = true
+    [ENTITIES.player3.health]
+    amount = 5
+    [ENTITIES.player3.damage]
+    amount = 2
+    [ENTITIES.player3.team]
+    name = "ally"
+
+    [ENTITIES.player3.velocity2]
+    x = 0.0
+    y = 0.0
+
+    [ENTITIES.player3.hitbox]
+    width = 70.0
+    height = 60.0
+
+[ENTITIES.player4]
+player = true
+movable = true
+position2 = true
+    [ENTITIES.player4.health]
+    amount = 5
+    [ENTITIES.player4.damage]
+    amount = 2
+    [ENTITIES.player4.team]
+    name = "ally"
+
+    [ENTITIES.player4.velocity2]
+    x = 0.0
+    y = 0.0
+
+    [ENTITIES.player4.hitbox]
+    width = 70.0
+    height = 60.0
+
+[ENTITIES.rocket]
+position2 = true
+    [ENTITIES.rocket.damage]
+    amount = 10
+    [ENTITIES.rocket.health]
+    amount = 10
+    [ENTITIES.rocket.team]
+    name = "ally"
+
+    [ENTITIES.rocket.velocity2]
+    x = 200
+    y = 0.0
+
+    [ENTITIES.rocket.fragile]
+    priority = 8
+
+    [ENTITIES.rocket.hitbox]
+    width = 50.0
+    height = 30.0
+
+[ENTITIES.minigun]
+position2 = true
+    [ENTITIES.minigun.damage]
+    amount = 1
+    [ENTITIES.minigun.health]
+    amount = 1
+    [ENTITIES.minigun.team]
+    name = "ally"
+
+    [ENTITIES.minigun.velocity2]
+    x = 220
+    y = 0.0
+
+    [ENTITIES.minigun.fragile]
+    priority = 1
+
+    [ENTITIES.minigun.hitbox]
+    width = 19.0
+    height = 6.0
+
+[ENTITIES.shotgun]
+position2 = true
+    [ENTITIES.shotgun.damage]
+    amount = 3
+    [ENTITIES.shotgun.health]
+    amount = 1
+    [ENTITIES.shotgun.team]
+    name = "ally"
+
+    [ENTITIES.shotgun.velocity2]
+    x = 220
+    y = 0.0
+
+    [ENTITIES.shotgun.fragile]
+    priority = 3
+
+    [ENTITIES.shotgun.hitbox]
+    width = 25.0
+    height = 10.0
+
+    [ENTITIES.shotgun.timeout]
+    duration = 1.5
