@@ -436,8 +436,10 @@ void RtypeServer::sendEnnemiesData() {
     packet.push_back(ProtocolCode::ENNEMIES_DATA);
 
     auto& positions = getComponent<addon::physic::Position2>();
+    auto& velocities = getComponent<addon::physic::Velocity2>();
 
-    for (auto &&[entity, pos] : ECS::IndexedZipper(positions)) {
+    for (auto &&[entity, pos, vel] :
+        ECS::IndexedZipper(positions, velocities)) {
         if (entity < EntityField::ENEMIES_BEGIN ||
             entity >= EntityField::ENEMIES_END)
             continue;
@@ -445,6 +447,8 @@ void RtypeServer::sendEnnemiesData() {
         append(packet, entity);
         append(packet, pos.x);
         append(packet, pos.y);
+        append(packet, vel.x);
+        append(packet, vel.y);
     }
     _server.queueBroadcast(packet);
 }
@@ -581,7 +585,6 @@ void RtypeServer::handleWantStart(const std::vector<uint8_t>& data,
 void RtypeServer::handleShoot(const std::vector<uint8_t>& data,
     const net::Address& sender) {
     Weapons weapon = static_cast<Weapons>(data[0]);
-    std::cout << weapon << std::endl;
 
     std::string addr_key = addressToString(sender);
     auto it = _client_entities.find(addr_key);

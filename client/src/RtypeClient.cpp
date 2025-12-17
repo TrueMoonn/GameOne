@@ -541,9 +541,13 @@ void RtypeClient::handleEnnemiesData(const std::vector<uint8_t>& data) {
     while (follow + sizeof(size_t) + 2 * sizeof(float) <= size) {
         size_t entity = extractSizeT(data, follow);
         follow += sizeof(size_t);
-        float x = extractFloat(data, follow);
+        float posx = extractFloat(data, follow);
         follow += sizeof(float);
-        float y = extractFloat(data, follow);
+        float posy = extractFloat(data, follow);
+        follow += sizeof(float);
+        float velx = extractFloat(data, follow);
+        follow += sizeof(float);
+        float vely = extractFloat(data, follow);
         follow += sizeof(float);
 
         if (entity < EntityField::ENEMIES_BEGIN ||
@@ -552,21 +556,17 @@ void RtypeClient::handleEnnemiesData(const std::vector<uint8_t>& data) {
 
         present[entity - EntityField::ENEMIES_BEGIN] = true;
 
-        if (entity >= getComponent<addon::physic::Position2>().size() ||
-            !getComponent<addon::physic::Position2>()[entity].has_value()) {
+        auto& positions = getComponent<addon::physic::Position2>();
+        auto& velocities = getComponent<addon::physic::Velocity2>();
+        if (entity >= positions.size() || !positions[entity].has_value() &&
+            (entity >= velocities.size() || !velocities[entity].has_value())) {
             _nextEnnemy++;
-            createEntity(entity, "ennemy1", {x, y});
-
-            std::cout << "[Client] Created enemy entity: entity="
-                << entity << " -> entity=" << entity
-                << " at position (" << x << ", " << y << ")\n";
-        } else {
-            auto& positions = getComponent<addon::physic::Position2>();
-            positions[entity].value().x = x;
-            positions[entity].value().y = y;
-            std::cout << "[Client] Updated enemy entity: entity="
-                << entity << " -> pos (" << x << ", " << y << ")\n";
+            createEntity(entity, "ennemy1");
         }
+        positions[entity].value().x = posx;
+        positions[entity].value().y = posy;
+        velocities[entity].value().x = velx;
+        velocities[entity].value().y = vely;
     }
 
     // A mettre avant la boucle + enlever celui dedans pour l'opti ?
