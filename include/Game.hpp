@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <iterator>
 #include <string>
 #include "ECS/Entity.hpp"
 #include "maths/Vector.hpp"
@@ -40,6 +41,7 @@ class Game : public te::GameTool {
       IN_GAME = 2,
       GAME_ENDED = 3
     };
+
  public:
     explicit Game(const std::string& dir);
     ~Game();
@@ -49,10 +51,14 @@ class Game : public te::GameTool {
 
  private:
     GAME_STATE _game_state = GAME_WAITING;
+
  protected:
-    size_t createMobWave(
-      std::size_t type, size_t begin = EntityField::ENEMIES_BEGIN,
-      size_t end = EntityField::ENEMIES_END);
+    std::size_t createMobWave(
+      std::size_t type, std::size_t begin = EntityField::ENEMIES_BEGIN,
+      std::size_t end = EntityField::ENEMIES_END);
+
+    std::size_t createBoundaries(std::size_t begin = EntityField::MAP_BEGIN,
+        std::size_t end = EntityField::MAP_END);
 
     void createProjectile(ECS::Entity e);
 };

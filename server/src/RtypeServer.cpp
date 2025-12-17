@@ -57,7 +57,6 @@ RtypeServer::RtypeServer(uint16_t port,
     createSystem("apply_fragile");
     createSystem("kill_entity");
 
-    generateMapBounds();
     _server.setClientConnectCallback([this](const net::Address& client) {
         std::cout << "[Server] Network connection from: "
                   << client.getIP() << ":" << client.getPort() << "\n";
@@ -170,7 +169,9 @@ void RtypeServer::runGame() {
 
     std::cout << "[Server] Game started! Running game loop..." << std::endl;
 
+    _nextMapE = createBoundaries(_nextMapE);
     spawnEnnemyEntity(waveNb);
+
     while (g_running && getGameState() == IN_GAME) {
         if (getGameState() != IN_GAME)
             break;
@@ -234,18 +235,6 @@ bool RtypeServer::start() {
 
 void RtypeServer::stop() {
     _server.stop();
-}
-
-void RtypeServer::generateMapBounds() {
-    size_t left_pannel_e = _nextMapE++;
-    size_t top_pannel_e = _nextMapE++;
-    size_t right_pannel_e = _nextMapE++;
-    size_t bottom_pannel_e = _nextMapE++;
-
-    createEntity(left_pannel_e, "boundary_left");
-    createEntity(top_pannel_e, "boundary_top");
-    createEntity(right_pannel_e, "boundary_right");
-    createEntity(bottom_pannel_e, "boundary_bottom");
 }
 
 void RtypeServer::update(float delta_time) {

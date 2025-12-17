@@ -53,6 +53,7 @@ void RtypeClient::setECS(void) {
     createSystem("movement2");
     createSystem("bound_hitbox");
     createSystem("deal_damage");
+    createSystem("apply_fragile");
     createSystem("kill_entity");
     createSystem("animate");
     createSystem("draw");
@@ -66,12 +67,13 @@ void RtypeClient::setConfig(void) {
     addConfig("./client/assets/buttons/buttonstart.toml");
     addConfig("./client/assets/buttons/buttonquit.toml");
 
+    // MAP
+    addConfig("./client/assets/background/config.toml");
+    addConfig("./config/entities/boundaries.toml");
+
     // PLAYER
     addConfig("./config/entities/player.toml");
     addConfig("./client/assets/player/player.toml");
-
-    // BACKGROUND
-    addConfig("./client/assets/background/config.toml");
 
     // MOBS
     addConfig("./config/entities/enemy1.toml");
@@ -209,6 +211,7 @@ void RtypeClient::runGame() {
     createEntity(_nextMap++, "bg4");
     createEntity(_nextMap++, "bg5");
     createEntity(_nextMap++, "bg6");
+    _nextMap = createBoundaries(_nextMap);
 
     while (!isEvent(te::event::System::Closed) && isConnected()
            && getGameState() == IN_GAME) {

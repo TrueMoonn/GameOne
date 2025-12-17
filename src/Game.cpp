@@ -29,7 +29,8 @@ void Game::setGameState(Game::GAME_STATE game_state) {
     _game_state = game_state;
 }
 
-size_t Game::createMobWave(std::size_t index, size_t begin, size_t end) {
+std::size_t Game::createMobWave(std::size_t index,
+    std::size_t begin, std::size_t end) {
     ECS::Entity e = begin;
     if (index < NB_WAVES) {
         for (auto& entity : WAVES[index]) {
@@ -39,6 +40,16 @@ size_t Game::createMobWave(std::size_t index, size_t begin, size_t end) {
         }
     }
     return e;
+}
+
+std::size_t Game::createBoundaries(std::size_t begin, std::size_t end) {
+    createEntity(begin++, "boundaries_left");
+    createEntity(begin++, "boundaries_right");
+    createEntity(begin++, "boundaries_top");
+    createEntity(begin++, "boundaries_bottom");
+    createEntity(begin++, "kz_mob");
+    createEntity(begin++, "kz_projectile_right");
+    return begin;
 }
 
 void Game::createProjectile(ECS::Entity e) {
