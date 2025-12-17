@@ -675,7 +675,8 @@ void RtypeClient::handlePlayersData(const std::vector<uint8_t>& data) {
             !positions[entity].has_value() ||
             !healths[entity].has_value()) {
             _nextPlayer++;
-            createEntity(entity, "player", {posX, posY});
+            std::string playerType = getPlayerTypeByEntityId(entity);
+            createEntity(entity, playerType, {posX, posY});
         } else {
             velocities[entity].value().x = velX;
             velocities[entity].value().y = velY;
@@ -701,7 +702,8 @@ void RtypeClient::handleGameStarted(const std::vector<uint8_t>& data) {
     Game::setGameState(Game::IN_GAME);
 
     if (_my_entity_id.has_value()) {
-        createEntity(_my_entity_id.value(), "player", {0, 0});
+        std::string playerType = getPlayerTypeByEntityId(_my_entity_id.value());
+        createEntity(_my_entity_id.value(), playerType, {0, 0});
     }
 }
 
@@ -713,4 +715,19 @@ void RtypeClient::handleWaveSpawned(const std::vector<uint8_t>& data) {
     size_t waveNb = extractSizeT(data, 0);
 
     _nextEnnemy = createMobWave(waveNb, _nextEnnemy, EntityField::ENEMIES_END);
+}
+
+std::string RtypeClient::getPlayerTypeByEntityId(size_t entity_id) const {
+    size_t player_index = entity_id - EntityField::PLAYER_BEGIN;
+    size_t player_number = (player_index % 4) + 1;
+
+    if (player_number == 1) {
+        return "player1";
+    } else if (player_number == 2) {
+        return "player2";
+    } else if (player_number == 3) {
+        return "player3";
+    } else {
+        return "player4";
+    }
 }
