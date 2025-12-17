@@ -51,6 +51,7 @@ RtypeServer::RtypeServer(uint16_t port,
     addConfig("config/entities/enemy1.toml");
     addConfig("config/entities/enemy2.toml");
     addConfig("config/entities/enemy3.toml");
+    addConfig("config/entities/enemy4.toml");
     addConfig("config/entities/boundaries.toml");
 
     createSystem("apply_pattern");
