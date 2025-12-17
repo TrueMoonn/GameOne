@@ -84,6 +84,8 @@ void RtypeClient::setConfig(void) {
     addConfig("./client/assets/enemies/basic/enemy2.toml");
     addConfig("./config/entities/enemy3.toml");
     addConfig("./client/assets/enemies/basic/enemy3.toml");
+    addConfig("./config/entities/enemy4.toml");
+    addConfig("./client/assets/enemies/basic/enemy4.toml");
 }
 
 void RtypeClient::setEntities(int scene) {
@@ -204,6 +206,7 @@ void RtypeClient::waitGame() {
 
 void RtypeClient::runGame() {
     const float deltaTime = 1.0f / FPS;
+    static te::Timestamp weapon_switch(0.1f);
     auto lastUpdate = std::chrono::steady_clock::now();
     auto lastPing = std::chrono::steady_clock::now();
 
@@ -241,7 +244,8 @@ void RtypeClient::runGame() {
         auto events = getEvents();
         sendEvent(events);
 
-        if (events.keys.UniversalKey[te::event::Key::R]) {
+        if (events.keys.UniversalKey[te::event::Key::R]
+            && weapon_switch.checkDelay()) {
             _weapon = static_cast<Weapons>(_weapon + 1);
             if (_weapon >= Weapons::ENDWEAPON)
                 _weapon = MINIGUN;
