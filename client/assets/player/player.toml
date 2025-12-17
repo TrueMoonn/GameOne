@@ -1,17 +1,63 @@
-[ENTITIES.player]
+[ENTITIES.player1]
 drawable = true
-    [ENTITIES.player.sprite]
+    [ENTITIES.player1.sprite]
     path = "./client/assets/player/player.png"
     size = [26, 21]
     scale = [70, 60]
     layer = 1
 
-    [ENTITIES.player.animation]
+    [ENTITIES.player1.animation]
     frames = [
         [[0, 0], 1, 0, true],
         [[0, 1], 1, 0, true],
         [[0, 2], 1, 0, true]
     ]
+
+[ENTITIES.player2]
+drawable = true
+    [ENTITIES.player2.sprite]
+    path = "./client/assets/player/player2.png"
+    size = [26, 21]
+    scale = [70, 60]
+    layer = 1
+
+    [ENTITIES.player2.animation]
+    frames = [
+        [[0, 0], 1, 0, true],
+        [[0, 1], 1, 0, true],
+        [[0, 2], 1, 0, true]
+    ]
+
+[ENTITIES.player3]
+drawable = true
+    [ENTITIES.player3.sprite]
+    path = "./client/assets/player/player3.png"
+    size = [26, 21]
+    scale = [70, 60]
+    layer = 1
+
+    [ENTITIES.player3.animation]
+    frames = [
+        [[0, 0], 1, 0, true],
+        [[0, 1], 1, 0, true],
+        [[0, 2], 1, 0, true]
+    ]
+
+[ENTITIES.player4]
+drawable = true
+    [ENTITIES.player4.sprite]
+    path = "./client/assets/player/player4.png"
+    size = [26, 21]
+    scale = [70, 60]
+    layer = 1
+
+    [ENTITIES.player4.animation]
+    frames = [
+        [[0, 0], 1, 0, true],
+        [[0, 1], 1, 0, true],
+        [[0, 2], 1, 0, true]
+    ]
+
 [ENTITIES.rocket]
     drawable = true
     [ENTITIES.rocket.sprite]
