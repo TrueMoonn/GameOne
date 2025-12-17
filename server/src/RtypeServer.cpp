@@ -6,7 +6,6 @@
 ** Copyright [2025] <DeepestDungeonGroup>
 */
 
-#include "Game.hpp"
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -29,6 +28,7 @@
 #include <interaction/components/player.hpp>
 #include <event/events.hpp>
 #include <ECS/Zipper.hpp>
+#include <Game.hpp>
 
 #include <waves.hpp>
 #include <RtypeServer.hpp>
@@ -595,7 +595,8 @@ void RtypeServer::handleShoot(const std::vector<uint8_t>& data,
     if (_nextProjectileE > EntityField::PROJECTILES_END)
         _nextProjectileE = EntityField::PROJECTILES_BEGIN;
     for (ECS::Entity e = 0; e < player.size() && e < position.size(); ++e) {
-        if (e == it->second && player[e].has_value() && position[e].has_value()) {
+        if (e == it->second && player[e].has_value() &&
+            position[e].has_value()) {
             if (weapon == Weapons::ROCKET) {
                 createEntity(_nextProjectileE++, "rocket",
                     {position[e].value().x + 60, position[e].value().y + 10});
@@ -605,15 +606,18 @@ void RtypeServer::handleShoot(const std::vector<uint8_t>& data,
                     position[e].value().y + 25});
                 if (velocities[_nextProjectileE].has_value())
                     velocities[_nextProjectileE++].value().y +=
-                        float((rand() % 120) - 60);
+                        static_cast<float>((rand() % 120) - 60);
             } else {
                 for (int i = 0; i < 10; i++) {
                     if (_nextEnnemyE > EntityField::PROJECTILES_END)
                         _nextEnnemyE = EntityField::PROJECTILES_BEGIN;
                     createEntity(_nextProjectileE, "shotgun",
-                        {position[e].value().x + 60, position[e].value().y + 10});
-                    velocities[_nextProjectileE].value().y += float((rand() % 200) - 100);
-                    velocities[_nextProjectileE++].value().x += float((rand() % 80) - 40);
+                        {position[e].value().x + 60,
+                        position[e].value().y + 10});
+                    velocities[_nextProjectileE].value().y +=
+                        static_cast<float>((rand() % 200) - 100);
+                    velocities[_nextProjectileE++].value().x +=
+                        static_cast<float>((rand() % 80) - 40);
                 }
             }
         }
