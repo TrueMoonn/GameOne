@@ -591,9 +591,9 @@ void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
         if (entity >= getComponent<addon::physic::Position2>().size() ||
             !getComponent<addon::physic::Position2>()[entity].has_value()) {
             _nextProjectile++;
-            createEntity(entity, "pistol", {x, y});
+            createEntity(entity, "rocket", {x, y});
 
-            std::cout << "[Client] Created pistol entity: entity="
+            std::cout << "[Client] Created rocket entity: entity="
                 << entity << " -> entity=" << entity
                 << " at position (" << x << ", " << y << ")\n";
         } else {
@@ -623,7 +623,7 @@ void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
 
         if (!present[present_idx]) {
             removeEntity(idx);
-            std::cout << "deleted pistol\n";
+            std::cout << "deleted rocket\n";
         }
     }
 }

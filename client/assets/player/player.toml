@@ -12,15 +12,15 @@ drawable = true
         [[0, 1], 1, 0, true],
         [[0, 2], 1, 0, true]
     ]
-[ENTITIES.pistol]
+[ENTITIES.rocket]
     drawable = true
-    [ENTITIES.pistol.sprite]
+    [ENTITIES.rocket.sprite]
     path = "./client/assets/player/shoot.png"
     size = [19, 6]
     scale = [50, 30]
     layer = 2
 
-    [ENTITIES.pistol.animation]
+    [ENTITIES.rocket.animation]
     frames = [
         [[0, 0], 2, 0.1, true]
     ]

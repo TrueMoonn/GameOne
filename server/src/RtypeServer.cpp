@@ -627,7 +627,7 @@ void RtypeServer::handleShoot(const std::vector<uint8_t>& data,
         _nextProjectileE = EntityField::PROJECTILES_BEGIN;
     for (ECS::Entity e = 0; e < player.size() && e < position.size(); ++e) {
         if (e == it->second && player[e].has_value() && position[e].has_value())
-            createEntity(_nextProjectileE++, "pistol",
+            createEntity(_nextProjectileE++, "rocket",
                 {position[e].value().x + 60, position[e].value().y + 10});
     }
 }
