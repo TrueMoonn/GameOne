@@ -44,7 +44,7 @@ stationary = true
     width = 20
     height = 720
     [ENTITIES.kz_mob.position2]
-    x = -20
+    x = -200
     y = 0
 
 [ENTITIES.kz_projectile_right]

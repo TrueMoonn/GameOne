@@ -2,21 +2,21 @@
 
 # PHYSIC
 position2 = true
-[ENTITIES.enemy3.velocity2]
+    [ENTITIES.enemy3.velocity2]
     x = -120
     y = 0
-[ENTITIES.enemy3.hitbox]
+    [ENTITIES.enemy3.hitbox]
     left = 0.0
     top = 0.0
-    width = 50.0
-    height = 50.0
+    width = 100.0
+    height = 100.0
 
 # SPEC
-[ENTITIES.enemy3.robust]
-priority = 10
-[ENTITIES.enemy3.health]
-amount = 1
-[ENTITIES.enemy3.damage]
-    amount = 1
-[ENTITIES.enemy3.team]
+    [ENTITIES.enemy3.robust]
+    priority = 10
+    [ENTITIES.enemy3.health]
+    amount = 10
+    [ENTITIES.enemy3.damage]
+    amount = 2
+    [ENTITIES.enemy3.team]
     name = "mob"

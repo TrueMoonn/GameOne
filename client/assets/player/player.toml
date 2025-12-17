@@ -3,7 +3,7 @@ drawable = true
     [ENTITIES.player.sprite]
     path = "./client/assets/player/player.png"
     size = [26, 21]
-    scale = [26, 21]
+    scale = [70, 60]
     layer = 1
 
     [ENTITIES.player.animation]

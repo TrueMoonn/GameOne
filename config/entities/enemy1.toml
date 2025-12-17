@@ -6,10 +6,8 @@ position2 = true
 x = -120
 y = 0
 [ENTITIES.enemy1.hitbox]
-left = 0.0
-top = 0.0
-width = 30.0
-height = 30.0
+width = 50.0
+height = 50.0
 
 # SPEC
 [ENTITIES.enemy1.robust]
