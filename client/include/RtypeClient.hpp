@@ -56,6 +56,8 @@ class RtypeClient : public Game {
     // TE_EXCEPTION("RTypeClient", TypeExtractError)  // ca marche po
 
  private:
+    Weapons _weapon = MINIGUN;
+
     te::network::GameClient _client;
     uint16_t _server_port;
     std::string _server_ip;

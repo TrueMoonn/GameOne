@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <unordered_map>
 #include <iterator>
 #include <string>
 #include "ECS/Entity.hpp"
@@ -36,6 +37,20 @@ enum EntityField : ECS::Entity {
 
 class Game : public te::GameTool {
  public:
+    enum Weapons {
+        MINIGUN = 0,
+        ROCKET,
+        SHOTGUN,
+        ENDWEAPON,
+    };
+
+    static const inline std::unordered_map<Weapons, std::string>
+        WEAPONS_NAMES = {
+            {MINIGUN, "minigun"},
+            {ROCKET, "rocket"},
+            {SHOTGUN, "shotgun"}
+    };
+
     enum GAME_STATE : uint8_t {
       GAME_WAITING = 1,
       IN_GAME = 2,

@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <iostream>
@@ -20,6 +21,7 @@
 #include "ECS/Entity.hpp"
 #include "ECS/Zipper.hpp"
 #include "Game.hpp"
+#include "clock.hpp"
 #include "physic/components/velocity.hpp"
 #include <physic/components/position.hpp>
 #include <display/components/animation.hpp>
@@ -239,6 +241,12 @@ void RtypeClient::runGame() {
         auto events = getEvents();
         sendEvent(events);
 
+        if (events.keys.UniversalKey[te::event::Key::R]) {
+            _weapon = static_cast<Weapons>(_weapon + 1);
+            if (_weapon >= Weapons::ENDWEAPON)
+                _weapon = MINIGUN;
+        }
+
         if (events.keys.UniversalKey[te::event::Space])
             sendShoot();
 
@@ -287,25 +295,39 @@ void RtypeClient::sendEvent(te::event::Events events) {
 }
 
 void RtypeClient::sendShoot() {
-    static te::Timestamp delay(1.0f);
+    static te::Timestamp delay[3] = {
+        te::Timestamp(0.08f),
+        te::Timestamp(2.0f),
+        te::Timestamp(1.2f)};
     static bool first_shot = true;
 
     if (!isConnected()) {
         return;
     }
 
-    if (!first_shot && !delay.checkDelay()) {
+    if (!first_shot && !delay[_weapon].checkDelay()) {
         return;
+    }
+
+    if (_my_entity_id.has_value()) {
+        auto& position = getComponent<addon::physic::Position2>();
+        if (position[_my_entity_id.value()].has_value()) {
+            createEntity(PROJECTILES_END + 1, "flash",
+                {position[_my_entity_id.value()].value().x + 70,
+                position[_my_entity_id.value()].value().y + 10});
+        }
     }
 
     if (first_shot) {
         first_shot = false;
-        delay.restart();
+        delay[_weapon].restart();
     }
 
+    // TODO(PIERRE): delay
     std::vector<uint8_t> packet;
 
     packet.push_back(PLAYER_SHOT);
+    packet.push_back(static_cast<uint8_t>(_weapon));
     _client.send(packet);
 }
 
@@ -577,10 +599,16 @@ void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
     while (follow + sizeof(size_t) + 2 * sizeof(float) <= size) {
         size_t entity = extractSizeT(data, follow);
         follow += sizeof(size_t);
-        float x = extractFloat(data, follow);
+        float posx = extractFloat(data, follow);
         follow += sizeof(float);
-        float y = extractFloat(data, follow);
+        float posy = extractFloat(data, follow);
         follow += sizeof(float);
+        float velx = extractFloat(data, follow);
+        follow += sizeof(float);
+        float vely = extractFloat(data, follow);
+        follow += sizeof(float);
+        Weapons weapon = static_cast<Weapons>(extractSizeT(data, follow));
+        follow += sizeof(size_t);
 
         if (entity < EntityField::PROJECTILES_BEGIN ||
             entity >= EntityField::PROJECTILES_END) {
@@ -598,19 +626,18 @@ void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
 
         present[idx] = true;
 
-        if (entity >= getComponent<addon::physic::Position2>().size() ||
-            !getComponent<addon::physic::Position2>()[entity].has_value()) {
-            _nextProjectile++;
-            createEntity(entity, "rocket", {x, y});
+        auto& positions = getComponent<addon::physic::Position2>();
+        auto& velocities = getComponent<addon::physic::Velocity2>();
 
-            std::cout << "[Client] Created rocket entity: entity="
-                << entity << " -> entity=" << entity
-                << " at position (" << x << ", " << y << ")\n";
-        } else {
-            auto& positions = getComponent<addon::physic::Position2>();
-            positions[entity].value().x = x;
-            positions[entity].value().y = y;
+        if ((entity >= positions.size() || !positions[entity].has_value()) &&
+            (entity >= velocities.size() || !velocities[entity].has_value())) {
+            _nextProjectile++;
+            createEntity(entity, WEAPONS_NAMES.at(weapon));
         }
+        positions[entity].value().x = posx;
+        positions[entity].value().y = posy;
+        velocities[entity].value().x = velx;
+        velocities[entity].value().y = vely;
     }
 
     // A mettre avant la boucle + enlever celui dedans pour l'opti ?
