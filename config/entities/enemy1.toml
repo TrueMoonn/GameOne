@@ -21,5 +21,5 @@ amount = 1
 name = "mob"
 [ENTITIES.enemy1.pattern]
 type = 1
-amplitude = 2
+amplitude = 75
 frequency = 0.2
