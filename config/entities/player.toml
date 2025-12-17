@@ -14,8 +14,6 @@ position2 = true
     y = 0.0
 
     [ENTITIES.player.hitbox]
-    left = 0.0
-    top = 0.0
     width = 30.0
     height = 30.0
 
@@ -34,7 +32,5 @@ position2 = true
     priority = 1
 
     [ENTITIES.projectile.hitbox]
-    left = 0.0
-    top = 0.0
     width = 20.0
     height = 10.0

@@ -2,7 +2,6 @@
 
 # PHYSIC
 position2 = true
-movable = true
 [ENTITIES.enemy3.velocity2]
     x = -120
     y = 0
@@ -13,8 +12,10 @@ movable = true
     height = 50.0
 
 # SPEC
+[ENTITIES.enemy3.robust]
+priority = 10
 [ENTITIES.enemy3.health]
-    amount = 1
+amount = 1
 [ENTITIES.enemy3.damage]
     amount = 1
 [ENTITIES.enemy3.team]

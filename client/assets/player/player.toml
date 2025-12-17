@@ -14,13 +14,13 @@ drawable = true
     ]
 [ENTITIES.projectile]
     drawable = true
-        [ENTITIES.projectile.sprite]
-        path = "./client/assets/player/shoot.png"
-        size = [19, 6]
-        scale = [20, 10]
-        layer = 2
+    [ENTITIES.projectile.sprite]
+    path = "./client/assets/player/shoot.png"
+    size = [19, 6]
+    scale = [20, 10]
+    layer = 2
 
-        [ENTITIES.projectile.animation]
-        frames = [
-            [[0, 0], 2, 0.1, true]
-        ]
+    [ENTITIES.projectile.animation]
+    frames = [
+        [[0, 0], 2, 0.1, true]
+    ]

@@ -1,43 +1,59 @@
 [ENTITIES.boundaries_left]
-    stationary = true
+stationary = true
     [ENTITIES.boundaries_left.position2]
-        x = -10
-        y = -10
+    x = -10
+    y = -10
     [ENTITIES.boundaries_left.hitbox]
-        left = 0
-        top = 0
-        width = 100
-        height = 1000
+    width = 20
+    height = 740
 
 [ENTITIES.boundaries_top]
-    stationary = true
+stationary = true
     [ENTITIES.boundaries_top.position2]
-        x = -10
-        y = -10
+    x = -10
+    y = -10
     [ENTITIES.boundaries_top.hitbox]
-        left = 0
-        top = 0
-        width = 1000
-        height = 100
+    width = 667
+    height = 20
 
 [ENTITIES.boundaries_right]
-    stationary = true
+stationary = true
     [ENTITIES.boundaries_right.position2]
-        x = 200
-        y = -10
+    x = 640
+    y = -10
     [ENTITIES.boundaries_right.hitbox]
-        left = 0
-        top = 0
-        width = 100
-        height = 1000
+    width = 20
+    height = 1300
 
 [ENTITIES.boundaries_bottom]
-    stationary = true
+stationary = true
     [ENTITIES.boundaries_bottom.position2]
-        x = -10
-        y = 200
+    x = -10
+    y = 710
     [ENTITIES.boundaries_bottom.hitbox]
-        left = 0
-        top = 0
-        width = 1000
-        height = 100
+    width = 667
+    height = 20
+
+[ENTITIES.kz_mob]
+    [ENTITIES.kz_mob.damage]
+    amount = 999
+    [ENTITIES.kz_mob.team]
+    name = "ally"
+
+    [ENTITIES.kz_mob.hitbox]
+    width = 20
+    height = 720
+    [ENTITIES.kz_mob.position2]
+    x = -20
+    y = 0
+
+[ENTITIES.kz_projectile_right]
+    [ENTITIES.kz_projectile_right.robust]
+    priority = 999
+
+    [ENTITIES.kz_projectile_right.hitbox]
+    width = 20
+    height = 720
+    [ENTITIES.kz_projectile_right.position2]
+    x = 1300
+    y = 0
