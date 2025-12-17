@@ -718,7 +718,8 @@ void RtypeServer::checkGameOverConditions(bool lastWaveSpawned) {
         }
 
         if (aliveEnemies == 0) {
-            std::cout << "[Server] All enemies defeated! Game Over - VICTORY!\n";
+            std::cout
+                << "[Server] All enemies defeated! Game Over - VICTORY!\n";
             sendGameEnded(true);
             gameEndSent = true;
             gameEndTimer.restart();

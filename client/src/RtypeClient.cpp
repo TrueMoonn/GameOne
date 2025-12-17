@@ -776,7 +776,6 @@ void RtypeClient::handlePlayersData(const std::vector<uint8_t>& data) {
 void RtypeClient::handleGameStarted(const std::vector<uint8_t>& data) {
     std::cout << "[Client] Game is starting!\n";
     Game::setGameState(Game::IN_GAME);
-
 }
 
 void RtypeClient::handleGameEnded(const std::vector<uint8_t>& data) {
