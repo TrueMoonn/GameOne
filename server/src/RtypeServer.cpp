@@ -294,7 +294,7 @@ void RtypeServer::sendErrorTooManyClients(const net::Address& client) {
     std::vector<uint8_t> packet;
 
     packet.push_back(ERROR_TOO_MANY_CLIENTS);
-    _server.sendTo(client, packet);
+    _server.queuePacket(client, packet);
 }
 
 void RtypeServer::sendConnectionAccepted(const net::Address& client,
@@ -303,21 +303,21 @@ void RtypeServer::sendConnectionAccepted(const net::Address& client,
 
     packet.push_back(CONNECTION_ACCEPTED);
     append(packet, entity_id);
-    _server.sendTo(client, packet);
+    _server.queuePacket(client, packet);
 }
 
 void RtypeServer::sendPong(const net::Address& client) {
     std::vector<uint8_t> packet;
 
     packet.push_back(PONG);
-    _server.sendTo(client, packet);
+    _server.queuePacket(client, packet);
 }
 
 void RtypeServer::sendDisconnection(const net::Address& client) {
     std::vector<uint8_t> packet;
 
     packet.push_back(DISCONNECTION);
-    _server.sendTo(client, packet);
+    _server.queuePacket(client, packet);
 }
 
 void RtypeServer::handleConnectionRequest(const std::vector<uint8_t>& data,
@@ -474,7 +474,7 @@ void RtypeServer::sendEnnemySpawn(size_t waveNb) {
     append(packet, waveNb);
 
     std::cout << "Sending spawn wave : WAVE " << waveNb << "\n";
-    _server.broadcastToAll(packet);
+    _server.queueBroadcast(packet);
 }
 
 void RtypeServer::sendEnnemiesData() {
@@ -500,7 +500,7 @@ void RtypeServer::sendEnnemiesData() {
         std::cout << "  - Ennemy " << entity << " at (" << pos.x << ", "
             << pos.y << ")" << "\n";
     }
-    _server.broadcastToAll(packet);
+    _server.queueBroadcast(packet);
 }
 
 void RtypeServer::sendProjectilesData() {
@@ -524,7 +524,7 @@ void RtypeServer::sendProjectilesData() {
         std::cout << "  - Projectile " << entity << " at (" << pos.x << ", "
             << pos.y << ")" << "\n";
     }
-    _server.broadcastToAll(packet);
+    _server.queueBroadcast(packet);
 }
 
 void RtypeServer::sendPlayersData() {
@@ -551,7 +551,7 @@ void RtypeServer::sendPlayersData() {
         append(packet, vel.y);
         append(packet, hp.amount);
     }
-    _server.broadcastToAll(packet);
+    _server.queueBroadcast(packet);
 }
 
 void RtypeServer::sendGameStart() {
@@ -559,7 +559,7 @@ void RtypeServer::sendGameStart() {
     packet.push_back(GAME_START);
 
     std::cout << "[Server] Broadcasting GAME_START to all clients\n";
-    _server.broadcastToAll(packet);
+    _server.queueBroadcast(packet);
 }
 
 void RtypeServer::handleWantStart(const std::vector<uint8_t>& data,
