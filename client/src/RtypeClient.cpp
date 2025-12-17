@@ -288,11 +288,21 @@ void RtypeClient::sendEvent(te::event::Events events) {
 
 void RtypeClient::sendShoot() {
     static te::Timestamp delay(1.0f);
-    if (!isConnected() || !delay.checkDelay()) {
+    static bool first_shot = true;
+
+    if (!isConnected()) {
         return;
     }
 
-    // TODO(PIERRE): delay
+    if (!first_shot && !delay.checkDelay()) {
+        return;
+    }
+
+    if (first_shot) {
+        first_shot = false;
+        delay.restart();
+    }
+
     std::vector<uint8_t> packet;
 
     packet.push_back(PLAYER_SHOT);
