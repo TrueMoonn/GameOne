@@ -58,8 +58,8 @@ class RtypeServer : public Game {
     void stop();
     void update(float delta_time);
 
-    void waitGame();  // Boucle d'attente (GAME_WAITING)
-    void runGame();   // Boucle de jeu principale (IN_GAME)
+    void waitGame();
+    void runGame();
 
     void registerProtocolHandlers();
     void generateMapBounds();
@@ -68,9 +68,9 @@ class RtypeServer : public Game {
     void sendErrorTooManyClients(const net::Address& client);
     void sendPong(const net::Address& client);
     void sendDisconnection(const net::Address& client);
-    void sendEnnemiesData();  // Broadcast all entity positions
-    void sendPlayersData();  // Broadcast all entity positions
-    void sendProjectilesData();  // Broadcast all entity positions
+    void sendEnnemiesData();
+    void sendPlayersData();
+    void sendProjectilesData();
     void sendGameStart();
     void sendEnnemySpawn(size_t waveNb);
 
@@ -94,7 +94,7 @@ class RtypeServer : public Game {
     size_t spawnPlayerEntity(const net::Address& client);
     void spawnEnnemyEntity(size_t waveNb);
 
-    void processEntitiesEvents();  // Process events for each entity
+    void processEntitiesEvents();
 
     std::string addressToString(const net::Address& addr) const;
     void append(std::vector<uint8_t>& vec, uint32_t value) const;
