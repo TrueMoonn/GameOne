@@ -60,6 +60,7 @@ class RtypeServer : public Game {
 
     void waitGame();
     void runGame();
+    void resetGameState();
 
     void registerProtocolHandlers();
     void generateMapBounds();
@@ -95,6 +96,8 @@ class RtypeServer : public Game {
     void spawnEnnemyEntity(size_t waveNb);
 
     void processEntitiesEvents();
+    void checkGameOverConditions(bool lastWaveSpawned);
+    void sendGameEnded(bool victory);
 
     std::string addressToString(const net::Address& addr) const;
     void append(std::vector<uint8_t>& vec, uint32_t value) const;

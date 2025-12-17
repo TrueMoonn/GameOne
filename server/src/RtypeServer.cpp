@@ -29,6 +29,7 @@
 #include <event/events.hpp>
 #include <ECS/Zipper.hpp>
 #include <Game.hpp>
+#include <clock.hpp>
 
 #include <waves.hpp>
 #include <RtypeServer.hpp>
@@ -157,6 +158,42 @@ void RtypeServer::waitGame() {
     }
 }
 
+void RtypeServer::resetGameState() {
+    std::cout << "[Server] Resetting game state..." << std::endl;
+
+    for (auto& [entity_id, state] : _players) {
+        state = WAIT_GAME;
+    }
+
+    for (ECS::Entity e = EntityField::ENEMIES_BEGIN;
+         e < EntityField::ENEMIES_END; ++e) {
+        removeEntity(e);
+    }
+
+    for (ECS::Entity e = EntityField::PROJECTILES_BEGIN;
+         e < EntityField::PROJECTILES_END; ++e) {
+        removeEntity(e);
+    }
+
+    for (ECS::Entity e = EntityField::MAP_BEGIN;
+         e < EntityField::MAP_END; ++e) {
+        removeEntity(e);
+    }
+
+    for (auto& [entity_id, state] : _players) {
+        removeEntity(entity_id);
+        createEntity(entity_id, "player");
+    }
+
+    _nextMapE = EntityField::MAP_BEGIN;
+    _nextEnnemyE = EntityField::ENEMIES_BEGIN;
+    _nextProjectileE = EntityField::PROJECTILES_BEGIN;
+
+    _entity_events.clear();
+
+    std::cout << "[Server] Game state reset complete!" << std::endl;
+}
+
 void RtypeServer::runGame() {
     te::Timestamp updateTimer(UPDATES_TIME / 1000.0f);
     te::Timestamp ennemyWaveTimer(static_cast<float>(TIME_ENNEMY_SPAWN));
@@ -164,6 +201,7 @@ void RtypeServer::runGame() {
     te::Timestamp ennemiesUpdateTimer(REFRESH_ENNEMIES_TIME / 1000.0f);
     te::Timestamp projectileUpdateTimer(REFRESH_PROJECTILE_TIME / 1000.0f);
     uint waveNb = 0;
+    bool lastWaveSpawned = false;
 
     std::cout << "[Server] Game started! Running game loop..." << std::endl;
 
@@ -178,6 +216,8 @@ void RtypeServer::runGame() {
             update(0.0f);
             processEntitiesEvents();
             runSystems();
+
+            checkGameOverConditions(lastWaveSpawned);
         }
 
         if (playersUpdateTimer.checkDelay()) {
@@ -193,10 +233,12 @@ void RtypeServer::runGame() {
         }
 
         if (ennemyWaveTimer.checkDelay()) {
-            spawnEnnemyEntity(waveNb);
             waveNb++;
-            if (waveNb >= NB_WAVES)
-                waveNb = 0;
+            if (waveNb >= NB_WAVES) {
+                lastWaveSpawned = true;
+            } else {
+                spawnEnnemyEntity(waveNb);
+            }
         }
     }
     std::cout << "[Server] Game loop ended." << std::endl;
@@ -626,4 +668,76 @@ void RtypeServer::handleShoot(const std::vector<uint8_t>& data,
             }
         }
     }
+}
+
+void RtypeServer::checkGameOverConditions(bool lastWaveSpawned) {
+    static bool gameEndSent = false;
+    static te::Timestamp gameEndTimer(2.0f);  // 2 seconds delay
+
+    auto& healths = getComponent<addon::eSpec::Health>();
+    int alivePlayers = 0;
+
+    for (auto& [entity_id, state] : _players) {
+        if (entity_id < healths.size() && healths[entity_id].has_value()) {
+            if (healths[entity_id].value().amount > 0) {
+                alivePlayers++;
+                if (state == PLAYER_DEAD) {
+                    state = PLAYER_ALIVE;
+                }
+            } else {
+                if (state == PLAYER_ALIVE) {
+                    state = PLAYER_DEAD;
+                    std::cout << "[Server] Player " << entity_id
+                              << " died!\n";
+                }
+            }
+        }
+    }
+
+    if (!gameEndSent && alivePlayers == 0) {
+        std::cout << "[Server] All players are dead! Game Over - DEFEAT!\n";
+        sendGameEnded(false);
+        gameEndSent = true;
+        gameEndTimer.restart();
+        return;
+    }
+
+    if (!gameEndSent && lastWaveSpawned) {
+        auto& positions = getComponent<addon::physic::Position2>();
+        int aliveEnemies = 0;
+
+        for (ECS::Entity e = EntityField::ENEMIES_BEGIN;
+             e < EntityField::ENEMIES_END; ++e) {
+            if (e < positions.size() && positions[e].has_value()) {
+                if (e < healths.size() && healths[e].has_value()) {
+                    if (healths[e].value().amount > 0) {
+                        aliveEnemies++;
+                    }
+                }
+            }
+        }
+
+        if (aliveEnemies == 0) {
+            std::cout << "[Server] All enemies defeated! Game Over - VICTORY!\n";
+            sendGameEnded(true);
+            gameEndSent = true;
+            gameEndTimer.restart();
+        }
+    }
+
+    if (gameEndSent && gameEndTimer.checkDelay()) {
+        std::cout << "[Server] Ending game now...\n";
+        setGameState(GAME_ENDED);
+        gameEndSent = false;
+    }
+}
+
+void RtypeServer::sendGameEnded(bool victory) {
+    std::vector<uint8_t> packet;
+    packet.push_back(GAME_ENDED);
+    packet.push_back(victory ? 1 : 0);
+
+    std::cout << "[Server] Broadcasting GAME_ENDED ("
+              << (victory ? "VICTORY" : "DEFEAT") << ") to all clients\n";
+    _server.queueBroadcast(packet);
 }

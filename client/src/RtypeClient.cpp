@@ -277,6 +277,37 @@ void RtypeClient::playersAnimation(void) {
     }
 }
 
+void RtypeClient::resetGameEntities() {
+    std::cout << "[Client] Cleaning up game entities...\n";
+
+    for (ECS::Entity e = EntityField::ENEMIES_BEGIN;
+         e < EntityField::ENEMIES_END; ++e) {
+        removeEntity(e);
+    }
+
+    for (ECS::Entity e = EntityField::PROJECTILES_BEGIN;
+         e < EntityField::PROJECTILES_END; ++e) {
+        removeEntity(e);
+    }
+
+    for (ECS::Entity e = EntityField::MAP_BEGIN;
+         e < EntityField::MAP_END; ++e) {
+        removeEntity(e);
+    }
+
+    for (ECS::Entity e = EntityField::PLAYER_BEGIN;
+         e < EntityField::PLAYER_END; ++e) {
+        removeEntity(e);
+    }
+
+    _nextMap = EntityField::MAP_BEGIN;
+    _nextEnnemy = EntityField::ENEMIES_BEGIN;
+    _nextProjectile = EntityField::PROJECTILES_BEGIN;
+    _nextPlayer = EntityField::PLAYER_BEGIN;
+
+    std::cout << "[Client] Game entities cleaned up!\n";
+}
+
 std::chrono::_V2::steady_clock::time_point RtypeClient::getPing() {
     return _pingTime;
 }
@@ -562,15 +593,14 @@ void RtypeClient::handleEnnemiesData(const std::vector<uint8_t>& data) {
 
         auto& positions = getComponent<addon::physic::Position2>();
         auto& velocities = getComponent<addon::physic::Velocity2>();
-        if (entity >= positions.size() || !positions[entity].has_value() &&
-            (entity >= velocities.size() || !velocities[entity].has_value())) {
-            _nextEnnemy++;
-            createEntity(entity, "ennemy1");
+        if (entity < positions.size() && positions[entity].has_value()) {
+            positions[entity].value().x = posx;
+            positions[entity].value().y = posy;
         }
-        positions[entity].value().x = posx;
-        positions[entity].value().y = posy;
-        velocities[entity].value().x = velx;
-        velocities[entity].value().y = vely;
+        if (entity < velocities.size() && velocities[entity].has_value()) {
+            velocities[entity].value().x = velx;
+            velocities[entity].value().y = vely;
+        }
     }
 
     // A mettre avant la boucle + enlever celui dedans pour l'opti ?
@@ -585,7 +615,7 @@ void RtypeClient::handleEnnemiesData(const std::vector<uint8_t>& data) {
             continue;
         if (!present[idx - EntityField::ENEMIES_BEGIN]) {
             removeEntity(idx);
-            std::cout << "deleted ennemy\n";
+            // std::cout << "deleted ennemy\n";  // Too verbose
         }
     }
 }
@@ -633,15 +663,19 @@ void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
         auto& positions = getComponent<addon::physic::Position2>();
         auto& velocities = getComponent<addon::physic::Velocity2>();
 
-        if ((entity >= positions.size() || !positions[entity].has_value()) &&
+        if ((entity >= positions.size() || !positions[entity].has_value()) ||
             (entity >= velocities.size() || !velocities[entity].has_value())) {
             _nextProjectile++;
             createEntity(entity, WEAPONS_NAMES.at(weapon));
         }
-        positions[entity].value().x = posx;
-        positions[entity].value().y = posy;
-        velocities[entity].value().x = velx;
-        velocities[entity].value().y = vely;
+        if (entity < positions.size() && positions[entity].has_value()) {
+            positions[entity].value().x = posx;
+            positions[entity].value().y = posy;
+        }
+        if (entity < velocities.size() && velocities[entity].has_value()) {
+            velocities[entity].value().x = velx;
+            velocities[entity].value().y = vely;
+        }
     }
 
     // A mettre avant la boucle + enlever celui dedans pour l'opti ?
@@ -664,7 +698,7 @@ void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
 
         if (!present[present_idx]) {
             removeEntity(idx);
-            std::cout << "deleted rocket\n";
+            // std::cout << "deleted rocket\n";  // Too verbose
         }
     }
 }
@@ -734,28 +768,47 @@ void RtypeClient::handlePlayersData(const std::vector<uint8_t>& data) {
             continue;
         if (!present[idx - EntityField::PLAYER_BEGIN]) {
             removeEntity(idx);
-            std::cout << "deleted player\n";
+            // std::cout << "deleted player\n";  // Too verbose
         }
     }
 }
 
 void RtypeClient::handleGameStarted(const std::vector<uint8_t>& data) {
+    std::cout << "[Client] Game is starting!\n";
     Game::setGameState(Game::IN_GAME);
 
-    if (_my_entity_id.has_value()) {
-        std::string playerType = getPlayerTypeByEntityId(_my_entity_id.value());
-        createEntity(_my_entity_id.value(), playerType, {0, 0});
-    }
 }
 
 void RtypeClient::handleGameEnded(const std::vector<uint8_t>& data) {
+    if (data.size() < 1) {
+        std::cerr << "[Client] Invalid GAME_ENDED packet\n";
+        Game::setGameState(Game::GAME_ENDED);
+        return;
+    }
+
+    bool victory = (data[0] == 1);
+
+    std::cout << "\n╔═══════════════════════════════════════╗\n";
+    if (victory) {
+        std::cout << "║           VICTORY!                    ║\n";
+        std::cout << "║  You defeated all enemies! Well done! ║\n";
+    } else {
+        std::cout << "║           DEFEAT!                     ║\n";
+        std::cout << "║     All players have been defeated    ║\n";
+    }
+    std::cout << "╚═══════════════════════════════════════╝\n\n";
+
     Game::setGameState(Game::GAME_ENDED);
 }
 
 void RtypeClient::handleWaveSpawned(const std::vector<uint8_t>& data) {
     size_t waveNb = extractSizeT(data, 0);
 
+    std::cout << "[Client] Spawning wave " << waveNb
+              << " starting at entity " << _nextEnnemy << "\n";
     _nextEnnemy = createMobWave(waveNb, _nextEnnemy, EntityField::ENEMIES_END);
+    std::cout << "[Client] Wave " << waveNb
+              << " spawned, next enemy slot: " << _nextEnnemy << "\n";
 }
 
 std::string RtypeClient::getPlayerTypeByEntityId(size_t entity_id) const {
