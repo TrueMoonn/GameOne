@@ -17,6 +17,82 @@ position2 = true
     width = 70.0
     height = 60.0
 
+[ENTITIES.player1]
+player = true
+movable = true
+position2 = true
+    [ENTITIES.player1.health]
+    amount = 5
+    [ENTITIES.player1.damage]
+    amount = 2
+    [ENTITIES.player1.team]
+    name = "ally"
+
+    [ENTITIES.player1.velocity2]
+    x = 0.0
+    y = 0.0
+
+    [ENTITIES.player1.hitbox]
+    width = 70.0
+    height = 60.0
+
+[ENTITIES.player2]
+player = true
+movable = true
+position2 = true
+    [ENTITIES.player2.health]
+    amount = 5
+    [ENTITIES.player2.damage]
+    amount = 2
+    [ENTITIES.player2.team]
+    name = "ally"
+
+    [ENTITIES.player2.velocity2]
+    x = 0.0
+    y = 0.0
+
+    [ENTITIES.player2.hitbox]
+    width = 70.0
+    height = 60.0
+
+[ENTITIES.player3]
+player = true
+movable = true
+position2 = true
+    [ENTITIES.player3.health]
+    amount = 5
+    [ENTITIES.player3.damage]
+    amount = 2
+    [ENTITIES.player3.team]
+    name = "ally"
+
+    [ENTITIES.player3.velocity2]
+    x = 0.0
+    y = 0.0
+
+    [ENTITIES.player3.hitbox]
+    width = 70.0
+    height = 60.0
+
+[ENTITIES.player4]
+player = true
+movable = true
+position2 = true
+    [ENTITIES.player4.health]
+    amount = 5
+    [ENTITIES.player4.damage]
+    amount = 2
+    [ENTITIES.player4.team]
+    name = "ally"
+
+    [ENTITIES.player4.velocity2]
+    x = 0.0
+    y = 0.0
+
+    [ENTITIES.player4.hitbox]
+    width = 70.0
+    height = 60.0
+
 [ENTITIES.projectile]
 position2 = true
     [ENTITIES.projectile.damage]
