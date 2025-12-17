@@ -287,7 +287,7 @@ void RtypeClient::sendEvent(te::event::Events events) {
 }
 
 void RtypeClient::sendShoot() {
-    static te::Timestamp delay(0.2f);
+    static te::Timestamp delay(1.0f);
     if (!isConnected() || !delay.checkDelay()) {
         return;
     }
@@ -591,9 +591,9 @@ void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
         if (entity >= getComponent<addon::physic::Position2>().size() ||
             !getComponent<addon::physic::Position2>()[entity].has_value()) {
             _nextProjectile++;
-            createEntity(entity, "projectile", {x, y});
+            createEntity(entity, "pistol", {x, y});
 
-            std::cout << "[Client] Created projectile entity: entity="
+            std::cout << "[Client] Created pistol entity: entity="
                 << entity << " -> entity=" << entity
                 << " at position (" << x << ", " << y << ")\n";
         } else {
@@ -623,7 +623,7 @@ void RtypeClient::handleProjectilesData(const std::vector<uint8_t>& data) {
 
         if (!present[present_idx]) {
             removeEntity(idx);
-            std::cout << "deleted projectile\n";
+            std::cout << "deleted pistol\n";
         }
     }
 }
