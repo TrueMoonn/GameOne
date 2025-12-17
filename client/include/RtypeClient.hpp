@@ -103,6 +103,8 @@ class RtypeClient : public Game {
     void handleGameEnded(const std::vector<uint8_t>& data);
     void handleWaveSpawned(const std::vector<uint8_t>& data);
 
+    std::string getPlayerTypeByEntityId(size_t entity_id) const;
+
     void append(std::vector<uint8_t>& vec, uint32_t value) const;
     uint32_t extractUint32(const std::vector<uint8_t>& data, size_t off) const;
     size_t extractSizeT(const std::vector<uint8_t>& data, size_t off) const;
