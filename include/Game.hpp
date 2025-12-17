@@ -41,6 +41,7 @@ class Game : public te::GameTool {
       IN_GAME = 2,
       GAME_ENDED = 3
     };
+
  public:
     explicit Game(const std::string& dir);
     ~Game();
@@ -50,6 +51,7 @@ class Game : public te::GameTool {
 
  private:
     GAME_STATE _game_state = GAME_WAITING;
+
  protected:
     std::size_t createMobWave(
       std::size_t type, std::size_t begin = EntityField::ENEMIES_BEGIN,
